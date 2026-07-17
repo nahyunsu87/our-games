@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>자동차 이상형 월드컵 🚗</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#1a1a2e; touch-action:manipulation; overscroll-behavior:none;
+    font-family:-apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  .hidden { display:none !important; }
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:10; text-align:center; padding:20px; }
+
+  /* ---------- 시작 화면 ---------- */
+  #menu { background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); overflow-y:auto; }
+  #menu h1 { font-size:clamp(30px,6.5vw,60px); color:#fff; text-shadow:0 4px 0 rgba(0,0,0,.2); margin-bottom:6px; }
+  #menu .sub { font-size:clamp(13px,2.6vw,20px); color:rgba(255,255,255,.92); font-weight:700; margin-bottom:22px; line-height:1.6; }
+  .secTitle { color:#fff; font-weight:900; font-size:clamp(15px,3vw,22px); margin:10px 0 8px; text-shadow:0 2px 0 rgba(0,0,0,.15); }
+  .pillRow { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
+  .pill { border:none; border-radius:20px; padding:12px 26px; font-size:clamp(16px,3.4vw,24px); font-weight:900; cursor:pointer;
+    background:rgba(255,255,255,.35); color:#fff; box-shadow:0 4px 0 rgba(0,0,0,.15); }
+  .pill.on { background:#fff; color:#5b3fa8; box-shadow:0 5px 0 rgba(0,0,0,.25); transform:translateY(-2px); }
+  .bigbtn { margin-top:20px; font-size:clamp(20px,4.5vw,36px); font-weight:900; color:#fff; background:linear-gradient(180deg,#FF9E44,#FF6B35);
+    border:none; border-radius:28px; padding:16px 54px; box-shadow:0 7px 0 #d14e1f, 0 12px 24px rgba(0,0,0,.25); cursor:pointer; }
+  .bigbtn:active { transform:translateY(5px); box-shadow:0 2px 0 #d14e1f; }
+  .note { margin-top:16px; color:rgba(255,255,255,.85); font-size:clamp(11px,2.3vw,14px); font-weight:600;
+    background:rgba(0,0,0,.18); border-radius:14px; padding:10px 16px; max-width:560px; line-height:1.7; }
+  .linkbtn { margin-top:10px; background:none; border:none; color:rgba(255,255,255,.75); font-weight:700;
+    font-size:clamp(11px,2.2vw,14px); text-decoration:underline; cursor:pointer; }
+
+  /* ---------- 게임 화면 ---------- */
+  #game { position:fixed; inset:0; background:linear-gradient(160deg,#3b3663 0%,#241f45 100%); display:none; }
+  #topbar { position:absolute; top:0; left:0; right:0; padding:max(10px, env(safe-area-inset-top)) 70px 6px; text-align:center; z-index:5; }
+  #roundName { color:#FFD166; font-size:clamp(20px,4.5vw,38px); font-weight:900; text-shadow:0 3px 0 rgba(0,0,0,.3); }
+  #roundProg { color:rgba(255,255,255,.75); font-size:clamp(12px,2.4vw,17px); font-weight:700; margin-top:2px; }
+  #homeBtn2 { position:absolute; top:max(10px, env(safe-area-inset-top)); left:12px; z-index:20; font-size:22px; background:rgba(255,255,255,.9);
+    border:none; border-radius:50%; width:46px; height:46px; box-shadow:0 3px 8px rgba(0,0,0,.3); cursor:pointer; }
+  #soundBtn { position:absolute; top:max(10px, env(safe-area-inset-top)); right:12px; z-index:20; font-size:22px; background:rgba(255,255,255,.9);
+    border:none; border-radius:50%; width:46px; height:46px; box-shadow:0 3px 8px rgba(0,0,0,.3); cursor:pointer; }
+
+  #arena { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:3vw; padding:calc(64px + env(safe-area-inset-top)) 3vw 150px; }
+  .carCard { position:relative; width:44%; max-width:560px; background:#fff; border-radius:26px; overflow:hidden; cursor:pointer;
+    box-shadow:0 8px 0 rgba(0,0,0,.25), 0 16px 32px rgba(0,0,0,.3); transition:transform .18s ease, opacity .3s ease, box-shadow .18s; }
+  .carCard:active { transform:scale(.97); }
+  .carCard .ph { width:100%; aspect-ratio:4/3; background:#e9e9f2 center/cover no-repeat; }
+  .carCard .info { padding:10px 14px 14px; text-align:center; }
+  .carCard .bd { color:#888; font-size:clamp(11px,2vw,16px); font-weight:800; }
+  .carCard .nm { color:#222; font-size:clamp(16px,3.4vw,30px); font-weight:900; line-height:1.25; }
+  .carCard .rk { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.55); color:#FFD166; font-size:clamp(10px,1.8vw,14px);
+    font-weight:800; border-radius:12px; padding:4px 10px; }
+  .carCard.winner { transform:scale(1.06); box-shadow:0 0 0 6px #FFD166, 0 16px 40px rgba(0,0,0,.4); z-index:3; }
+  .carCard.loser { opacity:.15; filter:grayscale(1); }
+  .gauge { position:absolute; inset:0; background:rgba(255,158,68,.0); pointer-events:none; display:flex; align-items:center; justify-content:center; }
+  .gauge svg { width:38%; max-width:150px; opacity:0; transition:opacity .15s; filter:drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+  .gauge.show svg { opacity:1; }
+  .gauge .ring { stroke:#FF6B35; stroke-width:10; fill:rgba(0,0,0,.35); stroke-linecap:round;
+    stroke-dasharray:283; stroke-dashoffset:283; transform:rotate(-90deg); transform-origin:center; }
+  .gauge .hand { font-size:34px; }
+  #vs { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); color:#fff; font-size:clamp(26px,6vw,54px);
+    font-weight:900; text-shadow:0 4px 0 rgba(0,0,0,.4), 0 0 24px rgba(255,209,102,.5); z-index:4; pointer-events:none; }
+
+  /* 카메라 미리보기 */
+  #camDock { position:absolute; bottom:max(10px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    z-index:6; display:flex; flex-direction:column; align-items:center; gap:5px; pointer-events:none; }
+  #camWrap { position:relative; width:min(26vw,200px); border-radius:18px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,.45); border:3px solid rgba(255,255,255,.7); }
+  #camVideo { width:100%; display:block; transform:scaleX(-1); }
+  #camWrap .half { position:absolute; top:0; bottom:0; width:50%; }
+  #camWrap .half.l { left:0; border-right:2px dashed rgba(255,255,255,.5); }
+  #camWrap .half.r { right:0; }
+  #camWrap .half.hot { background:rgba(255,158,68,.35); }
+  #camHint { color:#fff; font-weight:800; font-size:clamp(12px,2.4vw,17px); text-shadow:0 2px 4px rgba(0,0,0,.6);
+    background:rgba(0,0,0,.4); padding:5px 14px; border-radius:14px; }
+
+  /* 우승 화면 */
+  #winner { background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); z-index:30; overflow-y:auto; }
+  #winner .crown { font-size:clamp(34px,8vh,72px); margin-bottom:2px; }
+  #winner h2 { color:#FFD166; font-size:clamp(22px,6vh,46px); text-shadow:0 4px 0 rgba(0,0,0,.25); margin-bottom:12px; }
+  #wCard { width:min(78vw,420px,52vh); flex-shrink:0; background:#fff; border-radius:26px; overflow:hidden; box-shadow:0 0 0 6px #FFD166, 0 18px 44px rgba(0,0,0,.4); }
+  #wCard .ph { width:100%; aspect-ratio:4/3; background:#eee center/cover no-repeat; }
+  #wCard .info { padding:12px; }
+  #wCard .bd { color:#888; font-weight:800; font-size:clamp(12px,2.4vw,17px); }
+  #wCard .nm { color:#222; font-weight:900; font-size:clamp(20px,4.4vw,34px); }
+  #wSub { margin-top:12px; color:rgba(255,255,255,.9); font-weight:700; font-size:clamp(13px,2.6vw,19px); }
+
+  /* 카메라 오류 / 출처 */
+  #camError .card, #creditBox .card { background:#fff; border-radius:26px; padding:26px 28px; max-width:560px; }
+  #camError { background:rgba(20,20,40,.94); z-index:40; }
+  #camError h2 { color:#e63946; font-size:clamp(20px,4vw,30px); margin-bottom:12px; }
+  #camError p { color:#444; font-size:clamp(13px,2.6vw,18px); line-height:1.7; font-weight:600; margin-bottom:16px; }
+  #creditBox { background:rgba(20,20,40,.94); z-index:40; }
+  #creditBox .card { max-height:80vh; display:flex; flex-direction:column; }
+  #creditBox h2 { color:#333; font-size:clamp(18px,3.6vw,26px); margin-bottom:10px; }
+  #creditList { overflow-y:auto; text-align:left; font-size:11px; color:#666; line-height:1.6; -webkit-user-select:text; user-select:text; }
+  #creditList a { color:#5b3fa8; }
+  canvas#fx { position:fixed; inset:0; width:100%; height:100%; z-index:25; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="menu">
+  <h1>🚗 자동차 이상형 월드컵</h1>
+  <div class="sub">한국에서 최근 1년간 가장 많이 팔린 차 100대!<br>더 마음에 드는 차 쪽에서 <b>손을 흔들어</b> 골라요</div>
+  <div class="secTitle">몇 강으로 할까요?</div>
+  <div class="pillRow" id="sizeRow">
+    <button class="pill" data-size="16">16강</button>
+    <button class="pill on" data-size="32">32강</button>
+    <button class="pill" data-size="64">64강</button>
+  </div>
+  <div class="secTitle">고르는 방법</div>
+  <div class="pillRow" id="modeRow">
+    <button class="pill on" data-mode="cam">📸 카메라 손흔들기</button>
+    <button class="pill" data-mode="touch">👆 터치로 고르기</button>
+  </div>
+  <button class="bigbtn" id="startBtn">시작! 🏁</button>
+  <div class="note">
+    📸 카메라 모드: 왼쪽 차가 좋으면 <b>화면 왼쪽</b>에서, 오른쪽 차가 좋으면 <b>화면 오른쪽</b>에서 손을 크게 흔들어요!<br>
+    판매량 데이터: 2025년 국내 신차 등록 (카이즈유·KAIDA 기준, 일부 추정)
+  </div>
+  <button class="linkbtn" id="creditBtn">사진 출처 (Wikimedia Commons)</button>
+</div>
+
+<div id="game">
+  <div id="topbar"><div id="roundName"></div><div id="roundProg"></div></div>
+  <button id="homeBtn2">🏠</button>
+  <button id="soundBtn">🔊</button>
+  <div id="arena">
+    <div class="carCard" id="cardL">
+      <div class="rk"></div><div class="ph"></div>
+      <div class="info"><div class="bd"></div><div class="nm"></div></div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="45"/><text class="hand" x="50" y="62" text-anchor="middle">👋</text></svg></div>
+    </div>
+    <div id="vs">VS</div>
+    <div class="carCard" id="cardR">
+      <div class="rk"></div><div class="ph"></div>
+      <div class="info"><div class="bd"></div><div class="nm"></div></div>
+      <div class="gauge"><svg viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="45"/><text class="hand" x="50" y="62" text-anchor="middle">👋</text></svg></div>
+    </div>
+  </div>
+  <div id="camDock" class="hidden">
+    <div id="camWrap"><video id="camVideo" playsinline muted></video><div class="half l"></div><div class="half r"></div></div>
+    <div id="camHint">👋 좋아하는 차 쪽에서 손을 흔들어요!</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winner">
+  <div class="crown">👑</div>
+  <h2>우승!</h2>
+  <div id="wCard"><div class="ph"></div><div class="info"><div class="bd"></div><div class="nm"></div></div></div>
+  <div id="wSub"></div>
+  <button class="bigbtn" id="againBtn">다시 하기 🔄</button>
+</div>
+
+<div class="overlay hidden" id="camError">
+  <div class="card">
+    <h2>📷 카메라를 켤 수 없어요</h2>
+    <p>설정에서 카메라 권한을 허용해 주세요.<br>지금은 <b>터치 모드</b>로 바꿔서 즐길 수 있어요!</p>
+    <button class="bigbtn" id="touchFallbackBtn">👆 터치로 계속하기</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="creditBox">
+  <div class="card">
+    <h2>📷 사진 출처</h2>
+    <div id="creditList">1. 기아 쏘렌토 — <a href="https://commons.wikimedia.org/wiki/File:2024_Kia_Sorento_X-Line_SX_Prestige_(facelift),_front_12.20.24.jpg" target="_blank">2024_Kia_Sorento_X-Line_SX_Prestige_(facelift),_front_12.20.24.jpg</a> (Kevauto, CC BY-SA 4.0)<br>
+2. 현대 아반떼 — <a href="https://commons.wikimedia.org/wiki/File:2023_Hyundai_Elantra_Limited_in_Silver,_front_left,_04-04-2026.jpg" target="_blank">2023_Hyundai_Elantra_Limited_in_Silver,_front_left,_04-04-2026.jpg</a> (Cutlass, CC0)<br>
+3. 기아 카니발 — <a href="https://commons.wikimedia.org/wiki/File:2025_Kia_Carnival_Hybrid_EX,_front_right,_10-12-2025.jpg" target="_blank">2025_Kia_Carnival_Hybrid_EX,_front_right,_10-12-2025.jpg</a> (MercurySable99, CC BY-SA 4.0)<br>
+4. 기아 스포티지 — <a href="https://commons.wikimedia.org/wiki/File:2025_Kia_Sportage_S_front_only.jpg" target="_blank">2025_Kia_Sportage_S_front_only.jpg</a> (LuvsMG481, CC BY-SA 4.0)<br>
+5. 현대 그랜저 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Grandeur_2.5_Calligraphy_GN7_PE_Nocturne_Gray_Metallic_(5).jpg" target="_blank">Hyundai_Grandeur_2.5_Calligraphy_GN7_PE_Nocturne_Gray_Metallic_(5).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+6. 현대 팰리세이드 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Palisade_2.5T_Calligraphy_LX3_Creamy_White_Pearl_(46)_(cropped).jpg" target="_blank">Hyundai_Palisade_2.5T_Calligraphy_LX3_Creamy_White_Pearl_(46)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+7. 현대 싼타페 — <a href="https://commons.wikimedia.org/wiki/File:2024_Hyundai_Santa_Fe_Luxury_AWD_in_Hampton_Grey,_front_left,_2024-06-30.jpg" target="_blank">2024_Hyundai_Santa_Fe_Luxury_AWD_in_Hampton_Grey,_front_left,_2024-06-30.jpg</a> (Elise240SX, CC BY-SA 4.0)<br>
+8. 현대 포터2 — <a href="https://commons.wikimedia.org/wiki/File:00_hyundai_porter_3.jpg" target="_blank">00_hyundai_porter_3.jpg</a> (Benespit, CC BY-SA 4.0)<br>
+9. 기아 셀토스 — <a href="https://commons.wikimedia.org/wiki/File:Kia_Seltos_SP2_PE_Snow_White_Pearl_(17)_(cropped).jpg" target="_blank">Kia_Seltos_SP2_PE_Snow_White_Pearl_(17)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+10. 현대 투싼 — <a href="https://commons.wikimedia.org/wiki/File:2022_Hyundai_Tucson_Preferred,_Front_Right,_05-24-2021.jpg" target="_blank">2022_Hyundai_Tucson_Preferred,_Front_Right,_05-24-2021.jpg</a> (SsmIntrigue, CC BY-SA 4.0)<br>
+11. 현대 쏘나타 — <a href="https://commons.wikimedia.org/wiki/File:2024_Hyundai_Sonata_SEL,_front_right.jpg" target="_blank">2024_Hyundai_Sonata_SEL,_front_right.jpg</a> (MercurySable99, CC BY-SA 4.0)<br>
+12. 테슬라 모델 Y — <a href="https://commons.wikimedia.org/wiki/File:Tesla_Model_Y_Premium_(Facelift)_%E2%80%93_f_05052026.jpg" target="_blank">Tesla_Model_Y_Premium_(Facelift)_–_f_05052026.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+13. 기아 레이 — <a href="https://commons.wikimedia.org/wiki/File:0_Kia_Ray_5.jpg" target="_blank">0_Kia_Ray_5.jpg</a> (Benespit, CC BY-SA 4.0)<br>
+14. 제네시스 G80 — <a href="https://commons.wikimedia.org/wiki/File:Genesis_G80_IAA_2021_1X7A0229.jpg" target="_blank">Genesis_G80_IAA_2021_1X7A0229.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+15. 르노코리아 그랑 콜레오스 — <a href="https://commons.wikimedia.org/wiki/File:2024_Renault_Grand_Koleos_E-Tech_Hybrid_Iconic_front_view.jpg" target="_blank">2024 Renault Grand Koleos E-Tech Hybrid Iconic front view.jpg</a> (jasonryudotnet, CC BY 3.0)<br>
+16. 기아 봉고3 — <a href="https://commons.wikimedia.org/wiki/File:18_kia_bongo_3.jpg" target="_blank">18_kia_bongo_3.jpg</a> (Benespit, CC BY-SA 4.0)<br>
+17. 현대 스타리아 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Staria_1X7A0321.jpg" target="_blank">Hyundai_Staria_1X7A0321.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+18. 기아 K5 — <a href="https://commons.wikimedia.org/wiki/File:2022_Kia_K5_GT-Line_in_Pacific_Blue,_Front_Left,_09-05-2022.jpg" target="_blank">2022_Kia_K5_GT-Line_in_Pacific_Blue,_Front_Left,_09-05-2022.jpg</a> (Elise240SX, CC BY-SA 4.0)<br>
+19. 제네시스 GV70 — <a href="https://commons.wikimedia.org/wiki/File:Genesis_GV70_IAA_2021_1X7A0228.jpg" target="_blank">Genesis_GV70_IAA_2021_1X7A0228.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+20. 현대 코나 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Kona_N_Line_(SX2)_DSC_8250.jpg" target="_blank">Hyundai_Kona_N_Line_(SX2)_DSC_8250.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+21. 제네시스 GV80 — <a href="https://commons.wikimedia.org/wiki/File:2021_Genesis_GV80_3.5T_Advanced,_front_left,_09-09-2023.jpg" target="_blank">2021_Genesis_GV80_3.5T_Advanced,_front_left,_09-09-2023.jpg</a> (MercurySable99, CC BY-SA 4.0)<br>
+22. 벤츠 E클래스 — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_W214_1X7A1841.jpg" target="_blank">Mercedes-Benz_W214_1X7A1841.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+23. 기아 K8 — <a href="https://commons.wikimedia.org/wiki/File:Kia_K8_Hybrid_GL3_HEV_Snow_White_Pearl_(1)_(cropped).jpg" target="_blank">Kia_K8_Hybrid_GL3_HEV_Snow_White_Pearl_(1)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+24. BMW 5시리즈 — <a href="https://commons.wikimedia.org/wiki/File:BMW_G60_520i_1X7A2443.jpg" target="_blank">BMW_G60_520i_1X7A2443.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+25. 기아 EV3 — <a href="https://commons.wikimedia.org/wiki/File:Kia_EV3_GT-Line_Automesse_Ludwigsburg_2025_DSC_2635_(cropped).jpg" target="_blank">Kia_EV3_GT-Line_Automesse_Ludwigsburg_2025_DSC_2635_(cropped).jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+26. 현대 캐스퍼 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Casper_Active_Inspiration_AX1_PE_Tomboy_Khaki_(5)_(cropped).jpg" target="_blank">Hyundai_Casper_Active_Inspiration_AX1_PE_Tomboy_Khaki_(5)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+27. 기아 모닝 — <a href="https://commons.wikimedia.org/wiki/File:2018_Kia_Picanto_3_Automatic_1.2_Front.jpg" target="_blank">2018_Kia_Picanto_3_Automatic_1.2_Front.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+28. 현대 아이오닉 5 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Ioniq_5_AWD_Techniq-Paket_%E2%80%93_f_31122024.jpg" target="_blank">Hyundai_Ioniq_5_AWD_Techniq-Paket_–_f_31122024.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+29. 기아 니로 — <a href="https://commons.wikimedia.org/wiki/File:Kia_Niro_(SG2)_PHEV_Leonberg_2022_1X7A0474.jpg" target="_blank">Kia_Niro_(SG2)_PHEV_Leonberg_2022_1X7A0474.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+30. 현대 베뉴 — <a href="https://commons.wikimedia.org/wiki/File:2022_Hyundai_Venue_Preferred_in_Polar_White,_Front_Right,_09-12-2023.jpg" target="_blank">2022_Hyundai_Venue_Preferred_in_Polar_White,_Front_Right,_09-12-2023.jpg</a> (Elise240SX, CC BY-SA 4.0)<br>
+31. 쉐보레 트랙스 크로스오버 — <a href="https://commons.wikimedia.org/wiki/File:2024_Chevrolet_Trax_2RS,_front_left,_12-10-2023.jpg" target="_blank">2024_Chevrolet_Trax_2RS,_front_left,_12-10-2023.jpg</a> (MercurySable99, CC BY-SA 4.0)<br>
+32. 기아 EV6 — <a href="https://commons.wikimedia.org/wiki/File:2021_Kia_EV6_GT-Line_S.jpg" target="_blank">2021_Kia_EV6_GT-Line_S.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+33. 벤츠 GLC — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_X254_1X7A6343.jpg" target="_blank">Mercedes-Benz_X254_1X7A6343.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+34. 테슬라 모델 3 — <a href="https://commons.wikimedia.org/wiki/File:Tesla_Model_3_(2023)_Autofr%C3%BChling_Ulm_IMG_9282.jpg" target="_blank">Tesla_Model_3_(2023)_Autofrühling_Ulm_IMG_9282.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+35. KGM 토레스 — <a href="https://commons.wikimedia.org/wiki/File:KGM_Torres_Hybrid_Automesse_Ludwigsburg_2025_DSC_2567.jpg" target="_blank">KGM_Torres_Hybrid_Automesse_Ludwigsburg_2025_DSC_2567.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+36. 기아 타스만 — <a href="https://commons.wikimedia.org/wiki/File:2025_Kia_Tasman_front.jpg" target="_blank">2025_Kia_Tasman_front.jpg</a> (LuvsMG481, CC BY-SA 4.0)<br>
+37. 현대 아이오닉 9 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Ioniq_9_IMG_5950.jpg" target="_blank">Hyundai_Ioniq_9_IMG_5950.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+38. 기아 EV4 — <a href="https://commons.wikimedia.org/wiki/File:Kia_EV4_GT-Line_Automesse_Ludwigsburg_2025_DSC_2535.jpg" target="_blank">Kia_EV4_GT-Line_Automesse_Ludwigsburg_2025_DSC_2535.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+39. KGM 액티언 — <a href="https://commons.wikimedia.org/wiki/File:KGM_Actyon_J120_Royal_Copper_(5).jpg" target="_blank">KGM_Actyon_J120_Royal_Copper_(5).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+40. 제네시스 G90 — <a href="https://commons.wikimedia.org/wiki/File:Genesis_G90_3.5T_RS4_Savile_Silver_(1)_(cropped).jpg" target="_blank">Genesis_G90_3.5T_RS4_Savile_Silver_(1)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+41. KGM 무쏘 EV — <a href="https://commons.wikimedia.org/wiki/File:KGM_Musso_EV_001_cropped.jpg" target="_blank">KGM_Musso_EV_001_cropped.jpg</a> (JustAnotherCarDesigner, CC0)<br>
+42. 벤츠 GLE — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_GLE_350_d_4MATIC_AMG_Line_(V_167)_%E2%80%93_f_18042021.jpg" target="_blank">Mercedes-Benz_GLE_350_d_4MATIC_AMG_Line_(V_167)_–_f_18042021.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+43. 렉서스 ES — <a href="https://commons.wikimedia.org/wiki/File:Lexus_ES_350_(GSZ10)_IMG_4332.jpg" target="_blank">Lexus_ES_350_(GSZ10)_IMG_4332.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+44. BMW X3 — <a href="https://commons.wikimedia.org/wiki/File:BMW_G45_20_IMG_3794.jpg" target="_blank">BMW_G45_20_IMG_3794.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+45. KGM 무쏘 스포츠&amp;칸 — <a href="https://commons.wikimedia.org/wiki/File:KGM_Musso_Grand_Style_2.2D_%26_Musso_2.0T_4WD_Long_Deck_M9_Q300_(1).jpg" target="_blank">KGM_Musso_Grand_Style_2.2D_&amp;_Musso_2.0T_4WD_Long_Deck_M9_Q300_(1).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+46. 현대 마이티 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_4x2_Mighty_Cargo.jpg" target="_blank">Hyundai_4x2_Mighty_Cargo.jpg</a> (Spielvogel
+
+For a gallery of some more of my uploaded pictur, CC0)<br>
+47. BMW 3시리즈 — <a href="https://commons.wikimedia.org/wiki/File:BMW_G20_(2022)_IMG_7316_(2).jpg" target="_blank">BMW_G20_(2022)_IMG_7316_(2).jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+48. BMW X5 — <a href="https://commons.wikimedia.org/wiki/File:2019_BMW_X5_M50d_Automatic_3.0.jpg" target="_blank">2019_BMW_X5_M50d_Automatic_3.0.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+49. 현대 넥쏘 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_Nexo_IAA_2021_1X7A0241.jpg" target="_blank">Hyundai_Nexo_IAA_2021_1X7A0241.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+50. 르노코리아 아르카나 — <a href="https://commons.wikimedia.org/wiki/File:Renault_Arkana_(CMF-B)_Facelift_IMG_9961.jpg" target="_blank">Renault_Arkana_(CMF-B)_Facelift_IMG_9961.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+51. KGM 티볼리 — <a href="https://commons.wikimedia.org/wiki/File:KGM_Tivoli_Auto_Zuerich_2023_1X7A1040.jpg" target="_blank">KGM_Tivoli_Auto_Zuerich_2023_1X7A1040.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+52. 벤츠 S클래스 — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_W223_IMG_6663.jpg" target="_blank">Mercedes-Benz_W223_IMG_6663.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+53. 볼보 XC60 — <a href="https://commons.wikimedia.org/wiki/File:2018_Volvo_XC60_R-Design_D5_P-Pulse_2.0_Front.jpg" target="_blank">2018_Volvo_XC60_R-Design_D5_P-Pulse_2.0_Front.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+54. 현대 아이오닉 6 — <a href="https://commons.wikimedia.org/wiki/File:2023_Hyundai_Ioniq_6_Limited,_front_4.27.23.jpg" target="_blank">2023_Hyundai_Ioniq_6_Limited,_front_4.27.23.jpg</a> (Kevauto, CC BY-SA 4.0)<br>
+55. BMW 7시리즈 — <a href="https://commons.wikimedia.org/wiki/File:BMW_730d_(G11,_Facelift)_%E2%80%93_f_16012021.jpg" target="_blank">BMW_730d_(G11,_Facelift)_–_f_16012021.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+56. 포르쉐 카이엔 — <a href="https://commons.wikimedia.org/wiki/File:Porsche_Cayenne_(III,_Facelift)_%E2%80%93_f_01012025.jpg" target="_blank">Porsche_Cayenne_(III,_Facelift)_–_f_01012025.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+57. 르노코리아 QM6 — <a href="https://commons.wikimedia.org/wiki/File:2018_Renault_Koleos_Initiale_Paris_DCi_4X4_2.0_Front.jpg" target="_blank">2018_Renault_Koleos_Initiale_Paris_DCi_4X4_2.0_Front.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+58. BMW X7 — <a href="https://commons.wikimedia.org/wiki/File:BMW_G07_1X7A1696.jpg" target="_blank">BMW_G07_1X7A1696.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+59. 미니 쿠퍼 — <a href="https://commons.wikimedia.org/wiki/File:Mini_Hatch_(J01)_Ditzingen_Mobil_IMG_9772_(cropped).jpg" target="_blank">Mini_Hatch_(J01)_Ditzingen_Mobil_IMG_9772_(cropped).jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+60. BMW X6 — <a href="https://commons.wikimedia.org/wiki/File:BMW_G06_IMG_3142.jpg" target="_blank">BMW_G06_IMG_3142.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+61. BMW X4 — <a href="https://commons.wikimedia.org/wiki/File:2018_BMW_X4_xDrive20d_M_Sport_Automatic_2.0.jpg" target="_blank">2018_BMW_X4_xDrive20d_M_Sport_Automatic_2.0.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+62. 렉서스 NX — <a href="https://commons.wikimedia.org/wiki/File:2023_Lexus_NX_450h,_front_4.5.23.jpg" target="_blank">2023_Lexus_NX_450h,_front_4.5.23.jpg</a> (Kevauto, CC BY-SA 4.0)<br>
+63. 기아 PV5 — <a href="https://commons.wikimedia.org/wiki/File:Kia_PV5_(SW1)_Cargo_%E2%80%93_Seoul_Mobility_Show_2025_(07).jpg" target="_blank">Kia_PV5_(SW1)_Cargo_–_Seoul_Mobility_Show_2025_(07).jpg</a> (Treeinkr, CC BY-SA 4.0)<br>
+64. BYD 아토 3 — <a href="https://commons.wikimedia.org/wiki/File:BYD_Atto_3_1X7A6491.jpg" target="_blank">BYD_Atto_3_1X7A6491.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+65. 아우디 A6 — <a href="https://commons.wikimedia.org/wiki/File:Audi_A6_C9_IAA_2025_DSC_1920.jpg" target="_blank">Audi_A6_C9_IAA_2025_DSC_1920.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+66. 포드 익스플로러 — <a href="https://commons.wikimedia.org/wiki/File:Ford_Explorer_(sixth_generation)_IMG_6063.jpg" target="_blank">Ford_Explorer_(sixth_generation)_IMG_6063.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+67. 벤츠 CLE — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_CLE_200_Coup%C3%A9_AMG_Line_(C_236)_%E2%80%93_f_21012024.jpg" target="_blank">Mercedes-Benz_CLE_200_Coupé_AMG_Line_(C_236)_–_f_21012024.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+68. 포르쉐 마칸 — <a href="https://commons.wikimedia.org/wiki/File:Porsche_Macan_4_IMG_2153.jpg" target="_blank">Porsche_Macan_4_IMG_2153.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+69. BYD 씨라이언 7 — <a href="https://commons.wikimedia.org/wiki/File:BYD_Sealion_05_DM-i_facelift_001.jpg" target="_blank">BYD_Sealion_05_DM-i_facelift_001.jpg</a> (KitsuneDP, CC0)<br>
+70. 폴스타 폴스타 4 — <a href="https://commons.wikimedia.org/wiki/File:Polestar_4_DSC_8232_(cropped_2).jpg" target="_blank">Polestar_4_DSC_8232_(cropped_2).jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+71. 벤츠 G클래스 — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_W463_G_350_BlueTEC_01.jpg" target="_blank">Mercedes-Benz_W463_G_350_BlueTEC_01.jpg</a> (Julian Herzog (Website), CC BY 4.0)<br>
+72. 벤츠 C클래스 — <a href="https://commons.wikimedia.org/wiki/File:Mercedes-Benz_W206_IMG_6380.jpg" target="_blank">Mercedes-Benz_W206_IMG_6380.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+73. 랜드로버 디펜더 — <a href="https://commons.wikimedia.org/wiki/File:Land_Rover_Defender_110_D40_SE_L663_Pangea_Green_(1)_(cropped).jpg" target="_blank">Land_Rover_Defender_110_D40_SE_L663_Pangea_Green_(1)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+74. 쉐보레 트레일블레이저 — <a href="https://commons.wikimedia.org/wiki/File:2021_Chevrolet_TrailBlazer_RS_AWD,_front_7.11.20.jpg" target="_blank">2021_Chevrolet_TrailBlazer_RS_AWD,_front_7.11.20.jpg</a> (Kevauto, CC BY-SA 4.0)<br>
+75. 아우디 Q5 — <a href="https://commons.wikimedia.org/wiki/File:Audi_Q5_2.0_TDI_quattro_S_line_(GU)_%E2%80%93_f_13102025.jpg" target="_blank">Audi_Q5_2.0_TDI_quattro_S_line_(GU)_–_f_13102025.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+76. 볼보 XC40 — <a href="https://commons.wikimedia.org/wiki/File:2019_Volvo_XC40_T5_Momentum_in_Bright_Silver_Metallic,_front_left,_2025-09-22.jpg" target="_blank">2019_Volvo_XC40_T5_Momentum_in_Bright_Silver_Metallic,_front_left,_2025-09-22.jpg</a> (Elise240SX, CC BY-SA 4.0)<br>
+77. 토요타 RAV4 — <a href="https://commons.wikimedia.org/wiki/File:2024_Toyota_RAV4_Prime_XSE_Premium_in_Silver_Sky_with_Midnight_Black_roof,_front_left.jpg" target="_blank">2024_Toyota_RAV4_Prime_XSE_Premium_in_Silver_Sky_with_Midnight_Black_roof,_front_left.jpg</a> (Mr.choppers, CC BY-SA 4.0)<br>
+78. 현대 카운티 — <a href="https://commons.wikimedia.org/wiki/File:2023_Hyundai_County_1.jpg" target="_blank">2023_Hyundai_County_1.jpg</a> (Benespit, CC BY-SA 4.0)<br>
+79. BMW X1 — <a href="https://commons.wikimedia.org/wiki/File:BMW_U11_1X7A6826.jpg" target="_blank">BMW_U11_1X7A6826.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+80. 볼보 XC90 — <a href="https://commons.wikimedia.org/wiki/File:Volvo_XC90_T8_AWD_Plug-in_Hybrid_Plus_(II,_2._Facelift)_%E2%80%93_f_03102025.jpg" target="_blank">Volvo_XC90_T8_AWD_Plug-in_Hybrid_Plus_(II,_2._Facelift)_–_f_03102025.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+81. 포르쉐 파나메라 — <a href="https://commons.wikimedia.org/wiki/File:Porsche_972_Turbo_E-Hybrid_IMG_0445.jpg" target="_blank">Porsche_972_Turbo_E-Hybrid_IMG_0445.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+82. 기아 EV5 — <a href="https://commons.wikimedia.org/wiki/File:2024_Kia_EV5_Earth_Exclusive_AWD_(Thailand)_front_view.png" target="_blank">2024_Kia_EV5_Earth_Exclusive_AWD_(Thailand)_front_view.png</a> (iMoD Official, CC BY 3.0)<br>
+83. 미니 컨트리맨 — <a href="https://commons.wikimedia.org/wiki/File:2018_Mini_Countryman_Cooper_S_2.0_Front.jpg" target="_blank">2018_Mini_Countryman_Cooper_S_2.0_Front.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+84. 아우디 A5 — <a href="https://commons.wikimedia.org/wiki/File:Audi_A5_B10_DSC_7314.jpg" target="_blank">Audi_A5_B10_DSC_7314.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+85. 제네시스 G70 — <a href="https://commons.wikimedia.org/wiki/File:2022_Genesis_G70_2.0T_Prestige,_front_left,_09-09-2023.jpg" target="_blank">2022_Genesis_G70_2.0T_Prestige,_front_left,_09-09-2023.jpg</a> (MercurySable99, CC BY-SA 4.0)<br>
+86. KGM 토레스 EVX — <a href="https://commons.wikimedia.org/wiki/File:KGM_Torres_Hybrid_Automesse_Ludwigsburg_2025_DSC_2567.jpg" target="_blank">KGM_Torres_Hybrid_Automesse_Ludwigsburg_2025_DSC_2567.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+87. BMW i4 — <a href="https://commons.wikimedia.org/wiki/File:BMW_i4_IMG_6695.jpg" target="_blank">BMW_i4_IMG_6695.jpg</a> (Alexander Migl, CC BY-SA 4.0)<br>
+88. BMW 4시리즈 — <a href="https://commons.wikimedia.org/wiki/File:2021_BMW_420i_M_Sport_Automatic_2.0.jpg" target="_blank">2021_BMW_420i_M_Sport_Automatic_2.0.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+89. 현대 쏠라티 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_H350_furgon_(cropped).jpg" target="_blank">Hyundai_H350_furgon_(cropped).jpg</a> (Matti Blume, CC BY-SA 4.0)<br>
+90. 폭스바겐 티구안 — <a href="https://commons.wikimedia.org/wiki/File:Volkswagen_Tiguan_III_IMG_8823_(cropped).jpg" target="_blank">Volkswagen_Tiguan_III_IMG_8823_(cropped).jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+91. 토요타 캠리 — <a href="https://commons.wikimedia.org/wiki/File:Toyota_Camry_AXVH80_2.5_HEV_Platinum_White_Pearl_Mica_05.jpg" target="_blank">Toyota_Camry_AXVH80_2.5_HEV_Platinum_White_Pearl_Mica_05.jpg</a> (Ethan Llamas, CC BY-SA 4.0)<br>
+92. 토요타 알파드 — <a href="https://commons.wikimedia.org/wiki/File:2018-2023_Toyota_Alphard_X.jpg" target="_blank">2018-2023_Toyota_Alphard_X.jpg</a> (TTTNIS, CC0)<br>
+93. 렉서스 RX — <a href="https://commons.wikimedia.org/wiki/File:Lexus_RX_500h_F_SPORT%2B_(V)_%E2%80%93_f_14072024.jpg" target="_blank">Lexus_RX_500h_F_SPORT+_(V)_–_f_14072024.jpg</a> (© M 93, CC BY-SA 3.0 de)<br>
+94. 기아 EV9 — <a href="https://commons.wikimedia.org/wiki/File:Kia_EV9_1X7A2472.jpg" target="_blank">Kia_EV9_1X7A2472.jpg</a> (Alexander-93, CC BY-SA 4.0)<br>
+95. 기아 K9 — <a href="https://commons.wikimedia.org/wiki/File:Kia_K9_RJ_PE_Aurora_Black_Pearl_(57)_(cropped).jpg" target="_blank">Kia_K9_RJ_PE_Aurora_Black_Pearl_(57)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+96. 현대 ST1 — <a href="https://commons.wikimedia.org/wiki/File:Hyundai_ST1_Cargo_A01_EV2_Creamy_White_(5)_(cropped).jpg" target="_blank">Hyundai_ST1_Cargo_A01_EV2_Creamy_White_(5)_(cropped).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+97. KGM 렉스턴 스포츠&amp;칸 — <a href="https://commons.wikimedia.org/wiki/File:KGM_Musso_Grand_Style_2.2D_%26_Musso_2.0T_4WD_Long_Deck_M9_Q300_(1).jpg" target="_blank">KGM_Musso_Grand_Style_2.2D_&amp;_Musso_2.0T_4WD_Long_Deck_M9_Q300_(1).jpg</a> (Damian B Oh, CC BY-SA 4.0)<br>
+98. 벤츠 GLB — <a href="https://commons.wikimedia.org/wiki/File:2020_Mercedes-Benz_GLB_200_AMG_Line_Premium_2.0_Front.jpg" target="_blank">2020_Mercedes-Benz_GLB_200_AMG_Line_Premium_2.0_Front.jpg</a> (Vauxford, CC BY-SA 4.0)<br>
+99. KGM 렉스턴 — <a href="https://commons.wikimedia.org/wiki/File:SsangYong_Rexton_Y450_front.jpg" target="_blank">SsangYong_Rexton_Y450_front.jpg</a> (SmartTalk, CC BY-SA 4.0)<br>
+100. 토요타 시에나 — <a href="https://commons.wikimedia.org/wiki/File:2021_Toyota_Sienna_XLE_Hybrid,_front_12.21.21.jpg" target="_blank">2021_Toyota_Sienna_XLE_Hybrid,_front_12.21.21.jpg</a> (Kevauto, CC BY-SA 4.0)<br></div>
+    <button class="bigbtn" id="creditClose" style="margin-top:14px; font-size:18px; padding:10px 30px;">닫기</button>
+  </div>
+</div>
+
+<canvas id="fx"></canvas>
+
+<script>
+/* ================= 데이터 (2025년 국내 판매 상위 100) ================= */
+const CARS = [{"rank":1,"b":"기아","m":"쏘렌토","u":100002,"img":"car001.webp"},{"rank":2,"b":"현대","m":"아반떼","u":79335,"img":"car002.webp"},{"rank":3,"b":"기아","m":"카니발","u":78218,"img":"car003.webp"},{"rank":4,"b":"기아","m":"스포티지","u":74517,"img":"car004.webp"},{"rank":5,"b":"현대","m":"그랜저","u":71775,"img":"car005.webp"},{"rank":6,"b":"현대","m":"팰리세이드","u":60909,"img":"car006.webp"},{"rank":7,"b":"현대","m":"싼타페","u":57891,"img":"car007.webp"},{"rank":8,"b":"현대","m":"포터2","u":56538,"img":"car008.webp"},{"rank":9,"b":"기아","m":"셀토스","u":55917,"img":"car009.webp"},{"rank":10,"b":"현대","m":"투싼","u":53901,"img":"car010.webp"},{"rank":11,"b":"현대","m":"쏘나타","u":52435,"img":"car011.webp"},{"rank":12,"b":"테슬라","m":"모델 Y","u":50405,"img":"car012.webp"},{"rank":13,"b":"기아","m":"레이","u":48654,"img":"car013.webp"},{"rank":14,"b":"제네시스","m":"G80","u":41291,"img":"car014.webp"},{"rank":15,"b":"르노코리아","m":"그랑 콜레오스","u":40877,"img":"car015.webp"},{"rank":16,"b":"기아","m":"봉고3","u":38461,"img":"car016.webp"},{"rank":17,"b":"현대","m":"스타리아","u":37030,"img":"car017.webp"},{"rank":18,"b":"기아","m":"K5","u":36598,"img":"car018.webp"},{"rank":19,"b":"제네시스","m":"GV70","u":34712,"img":"car019.webp"},{"rank":20,"b":"현대","m":"코나","u":32738,"img":"car020.webp"},{"rank":21,"b":"제네시스","m":"GV80","u":32397,"img":"car021.webp"},{"rank":22,"b":"벤츠","m":"E클래스","u":28690,"img":"car022.webp"},{"rank":23,"b":"기아","m":"K8","u":28154,"img":"car023.webp"},{"rank":24,"b":"BMW","m":"5시리즈","u":23876,"img":"car024.webp"},{"rank":25,"b":"기아","m":"EV3","u":21212,"img":"car025.webp"},{"rank":26,"b":"현대","m":"캐스퍼","u":18269,"img":"car026.webp"},{"rank":27,"b":"기아","m":"모닝","u":16297,"img":"car027.webp"},{"rank":28,"b":"현대","m":"아이오닉 5","u":14211,"img":"car028.webp"},{"rank":29,"b":"기아","m":"니로","u":13599,"img":"car029.webp"},{"rank":30,"b":"현대","m":"베뉴","u":12165,"img":"car030.webp"},{"rank":31,"b":"쉐보레","m":"트랙스 크로스오버","u":12109,"img":"car031.webp"},{"rank":32,"b":"기아","m":"EV6","u":9368,"img":"car032.webp"},{"rank":33,"b":"벤츠","m":"GLC","u":9331,"img":"car033.webp"},{"rank":34,"b":"테슬라","m":"모델 3","u":9300,"img":"car034.webp"},{"rank":35,"b":"KGM","m":"토레스","u":8659,"img":"car035.webp"},{"rank":36,"b":"기아","m":"타스만","u":8484,"img":"car036.webp"},{"rank":37,"b":"현대","m":"아이오닉 9","u":8227,"img":"car037.webp"},{"rank":38,"b":"기아","m":"EV4","u":8110,"img":"car038.webp"},{"rank":39,"b":"KGM","m":"액티언","u":7372,"img":"car039.webp"},{"rank":40,"b":"제네시스","m":"G90","u":7347,"img":"car040.webp"},{"rank":41,"b":"KGM","m":"무쏘 EV","u":7150,"img":"car041.webp"},{"rank":42,"b":"벤츠","m":"GLE","u":6954,"img":"car042.webp"},{"rank":43,"b":"렉서스","m":"ES","u":6870,"img":"car043.webp"},{"rank":44,"b":"BMW","m":"X3","u":6703,"img":"car044.webp"},{"rank":45,"b":"KGM","m":"무쏘 스포츠&칸","u":6588,"img":"car045.webp"},{"rank":46,"b":"현대","m":"마이티","u":6480,"img":"car046.webp"},{"rank":47,"b":"BMW","m":"3시리즈","u":6464,"img":"car047.webp"},{"rank":48,"b":"BMW","m":"X5","u":5970,"img":"car048.webp"},{"rank":49,"b":"현대","m":"넥쏘","u":5678,"img":"car049.webp"},{"rank":50,"b":"르노코리아","m":"아르카나","u":5562,"img":"car050.webp"},{"rank":51,"b":"KGM","m":"티볼리","u":5303,"img":"car051.webp"},{"rank":52,"b":"벤츠","m":"S클래스","u":5200,"img":"car052.webp"},{"rank":53,"b":"볼보","m":"XC60","u":5190,"img":"car053.webp"},{"rank":54,"b":"현대","m":"아이오닉 6","u":5081,"img":"car054.webp"},{"rank":55,"b":"BMW","m":"7시리즈","u":4700,"img":"car055.webp"},{"rank":56,"b":"포르쉐","m":"카이엔","u":4600,"img":"car056.webp"},{"rank":57,"b":"르노코리아","m":"QM6","u":4480,"img":"car057.webp"},{"rank":58,"b":"BMW","m":"X7","u":4300,"img":"car058.webp"},{"rank":59,"b":"미니","m":"쿠퍼","u":4300,"img":"car059.webp"},{"rank":60,"b":"BMW","m":"X6","u":3909,"img":"car060.webp"},{"rank":61,"b":"BMW","m":"X4","u":3903,"img":"car061.webp"},{"rank":62,"b":"렉서스","m":"NX","u":3900,"img":"car062.webp"},{"rank":63,"b":"기아","m":"PV5","u":3836,"img":"car063.webp"},{"rank":64,"b":"BYD","m":"아토 3","u":3076,"img":"car064.webp"},{"rank":65,"b":"아우디","m":"A6","u":3000,"img":"car065.webp"},{"rank":66,"b":"포드","m":"익스플로러","u":2900,"img":"car066.webp"},{"rank":67,"b":"벤츠","m":"CLE","u":2900,"img":"car067.webp"},{"rank":68,"b":"포르쉐","m":"마칸","u":2700,"img":"car068.webp"},{"rank":69,"b":"BYD","m":"씨라이언 7","u":2662,"img":"car069.webp"},{"rank":70,"b":"폴스타","m":"폴스타 4","u":2611,"img":"car070.webp"},{"rank":71,"b":"벤츠","m":"G클래스","u":2600,"img":"car071.webp"},{"rank":72,"b":"벤츠","m":"C클래스","u":2596,"img":"car072.webp"},{"rank":73,"b":"랜드로버","m":"디펜더","u":2550,"img":"car073.webp"},{"rank":74,"b":"쉐보레","m":"트레일블레이저","u":2509,"img":"car074.webp"},{"rank":75,"b":"아우디","m":"Q5","u":2500,"img":"car075.webp"},{"rank":76,"b":"볼보","m":"XC40","u":2300,"img":"car076.webp"},{"rank":77,"b":"토요타","m":"RAV4","u":2300,"img":"car077.webp"},{"rank":78,"b":"현대","m":"카운티","u":2238,"img":"car078.webp"},{"rank":79,"b":"BMW","m":"X1","u":2200,"img":"car079.webp"},{"rank":80,"b":"볼보","m":"XC90","u":2200,"img":"car080.webp"},{"rank":81,"b":"포르쉐","m":"파나메라","u":2200,"img":"car081.webp"},{"rank":82,"b":"기아","m":"EV5","u":2193,"img":"car082.webp"},{"rank":83,"b":"미니","m":"컨트리맨","u":2000,"img":"car083.webp"},{"rank":84,"b":"아우디","m":"A5","u":2000,"img":"car084.webp"},{"rank":85,"b":"제네시스","m":"G70","u":1873,"img":"car085.webp"},{"rank":86,"b":"KGM","m":"토레스 EVX","u":1812,"img":"car086.webp"},{"rank":87,"b":"BMW","m":"i4","u":1800,"img":"car087.webp"},{"rank":88,"b":"BMW","m":"4시리즈","u":1800,"img":"car088.webp"},{"rank":89,"b":"현대","m":"쏠라티","u":1741,"img":"car089.webp"},{"rank":90,"b":"폭스바겐","m":"티구안","u":1700,"img":"car090.webp"},{"rank":91,"b":"토요타","m":"캠리","u":1600,"img":"car091.webp"},{"rank":92,"b":"토요타","m":"알파드","u":1600,"img":"car092.webp"},{"rank":93,"b":"렉서스","m":"RX","u":1600,"img":"car093.webp"},{"rank":94,"b":"기아","m":"EV9","u":1594,"img":"car094.webp"},{"rank":95,"b":"기아","m":"K9","u":1581,"img":"car095.webp"},{"rank":96,"b":"현대","m":"ST1","u":1579,"img":"car096.webp"},{"rank":97,"b":"KGM","m":"렉스턴 스포츠&칸","u":1526,"img":"car097.webp"},{"rank":98,"b":"벤츠","m":"GLB","u":1500,"img":"car098.webp"},{"rank":99,"b":"KGM","m":"렉스턴","u":1361,"img":"car099.webp"},{"rank":100,"b":"토요타","m":"시에나","u":1200,"img":"car100.webp"}];
+
+/* ================= 공통 ================= */
+const $ = s => document.querySelector(s);
+let tourSize = 32, mode = 'cam', soundOn = true;
+
+document.querySelectorAll('#sizeRow .pill').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#sizeRow .pill').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); tourSize = +b.dataset.size; sfx.tap();
+});
+document.querySelectorAll('#modeRow .pill').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#modeRow .pill').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); mode = b.dataset.mode; sfx.tap();
+});
+$('#creditBtn').onclick = () => $('#creditBox').classList.remove('hidden');
+$('#creditClose').onclick = () => $('#creditBox').classList.add('hidden');
+
+/* ================= 효과음 ================= */
+let AC = null;
+function ac() { if (!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if (AC.state==='suspended') AC.resume(); return AC; }
+function tone(f, t, dur, type, vol) {
+  if (!soundOn) return;
+  const a = ac(), o = a.createOscillator(), g = a.createGain();
+  o.type = type||'sine'; o.frequency.value = f;
+  g.gain.setValueAtTime(vol||.18, a.currentTime+t);
+  g.gain.exponentialRampToValueAtTime(.001, a.currentTime+t+dur);
+  o.connect(g).connect(a.destination); o.start(a.currentTime+t); o.stop(a.currentTime+t+dur+.05);
+}
+const sfx = {
+  tap()  { tone(660,0,.08,'triangle'); },
+  pick() { tone(523,0,.1,'triangle'); tone(784,.09,.14,'triangle'); tone(1046,.2,.22,'triangle'); },
+  next() { tone(440,0,.07,'sine',.1); },
+  win()  { [523,659,784,1046,1318].forEach((f,i)=>tone(f,i*.13,.3,'triangle',.2)); }
+};
+$('#soundBtn').onclick = () => { soundOn = !soundOn; $('#soundBtn').textContent = soundOn?'🔊':'🔇'; };
+
+/* ================= 폭죽 ================= */
+const fxc = $('#fx'), fxx = fxc.getContext('2d');
+let parts = [];
+function resizeFx(){ fxc.width = innerWidth*devicePixelRatio; fxc.height = innerHeight*devicePixelRatio; fxx.scale(devicePixelRatio,devicePixelRatio); }
+resizeFx(); addEventListener('resize', resizeFx);
+function burst(x, y, n) {
+  const cols = ['#FFD166','#EF476F','#06D6A0','#4D96FF','#FF9E44'];
+  for (let i=0;i<(n||18);i++){ const a=Math.random()*6.28, sp=90+Math.random()*220;
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-80,life:.9,max:.9,c:cols[(Math.random()*5)|0],r:4+Math.random()*6}); }
+}
+function fireworks(){ for(let i=0;i<7;i++) setTimeout(()=>burst(innerWidth*(.15+Math.random()*.7), innerHeight*(.15+Math.random()*.45), 24), i*200); }
+let lastFx = performance.now();
+(function fxLoop(now){
+  requestAnimationFrame(fxLoop);
+  const dt = Math.min(.05,(now-lastFx)/1000); lastFx = now;
+  fxx.clearRect(0,0,innerWidth,innerHeight);
+  parts = parts.filter(p=>p.life>0);
+  for (const p of parts){ p.life-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=500*dt;
+    fxx.globalAlpha = Math.max(0,p.life/p.max); fxx.fillStyle = p.c;
+    fxx.beginPath(); fxx.arc(p.x,p.y,p.r,0,6.28); fxx.fill(); }
+  fxx.globalAlpha = 1;
+})(lastFx);
+
+/* ================= 카메라 & 모션 ================= */
+const video = $('#camVideo');
+let camReady = false;
+async function startCam() {
+  if (camReady) return true;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw 0;
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }, audio:false });
+    video.srcObject = stream; await video.play();
+    camReady = true; return true;
+  } catch(e) { return false; }
+}
+const mc = document.createElement('canvas'); mc.width = 64; mc.height = 48;
+const mctx = mc.getContext('2d', { willReadFrequently:true });
+let prevFrame = null, motionL = 0, motionR = 0, frameSkip = 0;
+function updateMotion() {
+  if (!camReady || !video.videoWidth) return;
+  if (frameSkip++ % 2 !== 0) return;
+  mctx.save(); mctx.translate(mc.width,0); mctx.scale(-1,1); /* 거울 모드 */
+  mctx.drawImage(video, 0, 0, mc.width, mc.height); mctx.restore();
+  const img = mctx.getImageData(0,0,mc.width,mc.height).data;
+  if (prevFrame) {
+    let l=0, r=0; const half = mc.width/2;
+    for (let y=0;y<mc.height;y++) for (let x=0;x<mc.width;x++) {
+      const i = (y*mc.width+x)*4;
+      const d = Math.abs(img[i]-prevFrame[i]) + Math.abs(img[i+1]-prevFrame[i+1]) + Math.abs(img[i+2]-prevFrame[i+2]);
+      if (d > 90) { if (x < half) l++; else r++; }
+    }
+    const cell = half*mc.height;
+    motionL = l/cell; motionR = r/cell;
+  }
+  prevFrame = new Uint8ClampedArray(img);
+}
+
+/* ================= 토너먼트 ================= */
+let pool = [], nextPool = [], pair = null, matchIdx = 0, busy = false;
+let selL = 0, selR = 0, lastT = performance.now(), cooldown = 0;
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function roundName(n){ return n===2 ? '🏆 결승' : n===4 ? '준결승 (4강)' : n+'강'; }
+
+function startTournament() {
+  pool = shuffle(CARS.slice()).slice(0, tourSize);
+  nextPool = []; matchIdx = 0;
+  $('#menu').classList.add('hidden'); $('#winner').classList.add('hidden');
+  $('#game').style.display = 'block';
+  $('#camDock').classList.toggle('hidden', mode !== 'cam');
+  nextMatch();
+}
+function setCard(el, car) {
+  el.querySelector('.ph').style.backgroundImage = `url(cars/${car.img})`;
+  el.querySelector('.bd').textContent = car.b;
+  el.querySelector('.nm').textContent = car.m;
+  el.querySelector('.rk').textContent = `판매 ${car.rank}위`;
+  el.classList.remove('winner','loser');
+  setGauge(el, 0);
+}
+function setGauge(el, v) {
+  const g = el.querySelector('.gauge');
+  g.classList.toggle('show', v > 0.03);
+  g.querySelector('.ring').style.strokeDashoffset = 283*(1-v);
+}
+function nextMatch() {
+  if (pool.length < 2) {
+    if (nextPool.length === 0 && pool.length === 1) return showWinner(pool[0]);
+    nextPool.push(...pool);
+    if (nextPool.length === 1) return showWinner(nextPool[0]);
+    pool = nextPool; nextPool = []; matchIdx = 0;
+  }
+  pair = [pool.shift(), pool.shift()];
+  matchIdx++;
+  $('#roundName').textContent = roundName(nextPool.length*2 + pool.length + 2);
+  $('#roundProg').textContent = `${matchIdx} / ${matchIdx + pool.length/2} 경기`;
+  setCard($('#cardL'), pair[0]); setCard($('#cardR'), pair[1]);
+  selL = selR = 0; busy = false; cooldown = 0.9; /* 잠깐 대기: 화면 전환 직후 오작동 방지 */
+  sfx.next();
+}
+function choose(side) {
+  if (busy || !pair) return;
+  busy = true;
+  const winEl = side==='L' ? $('#cardL') : $('#cardR');
+  const loseEl = side==='L' ? $('#cardR') : $('#cardL');
+  const winner = side==='L' ? pair[0] : pair[1];
+  winEl.classList.add('winner'); loseEl.classList.add('loser');
+  setGauge($('#cardL'),0); setGauge($('#cardR'),0);
+  const r = winEl.getBoundingClientRect();
+  burst(r.left+r.width/2, r.top+r.height/2, 26);
+  sfx.pick();
+  nextPool.push(winner);
+  setTimeout(nextMatch, 1100);
+}
+function showWinner(car) {
+  pair = null;
+  $('#game').style.display = 'none';
+  $('#winner').classList.remove('hidden');
+  $('#wCard .ph').style.backgroundImage = `url(cars/${car.img})`;
+  $('#wCard .bd').textContent = car.b;
+  $('#wCard .nm').textContent = car.m;
+  $('#wSub').textContent = `2025년 한국에서 ${car.u.toLocaleString('ko-KR')}대 팔린 차예요! (판매 ${car.rank}위)`;
+  sfx.win(); fireworks();
+}
+
+/* 카드 터치 선택 (양쪽 모드 공통) */
+$('#cardL').onclick = () => choose('L');
+$('#cardR').onclick = () => choose('R');
+
+/* ================= 메인 루프 (카메라 모드 게이지) ================= */
+(function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05,(now-lastT)/1000); lastT = now;
+  if (cooldown > 0) cooldown -= dt;
+  if (mode !== 'cam' || !pair || busy || cooldown > 0) return;
+  updateMotion();
+  const TH = 0.12, FILL = 1.0, DECAY = 1.6;
+  selL = motionL > TH ? Math.min(1, selL + dt/FILL) : Math.max(0, selL - dt*DECAY);
+  selR = motionR > TH ? Math.min(1, selR + dt/FILL) : Math.max(0, selR - dt*DECAY);
+  /* 양쪽 동시 감지 시 더 큰 쪽만 */
+  if (motionL > TH && motionR > TH) { if (motionL >= motionR) selR = Math.max(0, selR - dt*DECAY*2); else selL = Math.max(0, selL - dt*DECAY*2); }
+  setGauge($('#cardL'), selL); setGauge($('#cardR'), selR);
+  document.querySelector('#camWrap .half.l').classList.toggle('hot', motionL > TH);
+  document.querySelector('#camWrap .half.r').classList.toggle('hot', motionR > TH);
+  if (selL >= 1) { selL = selR = 0; choose('L'); }
+  else if (selR >= 1) { selL = selR = 0; choose('R'); }
+})(lastT);
+
+/* ================= 시작 / 홈 ================= */
+$('#startBtn').onclick = async () => {
+  ac(); sfx.tap();
+  if (mode === 'cam') {
+    const ok = await startCam();
+    if (!ok) { $('#camError').classList.remove('hidden'); return; }
+  }
+  startTournament();
+};
+$('#touchFallbackBtn').onclick = () => {
+  $('#camError').classList.add('hidden');
+  mode = 'touch';
+  document.querySelectorAll('#modeRow .pill').forEach(x => x.classList.toggle('on', x.dataset.mode==='touch'));
+  startTournament();
+};
+$('#againBtn').onclick = () => { $('#winner').classList.add('hidden'); $('#menu').classList.remove('hidden'); sfx.tap(); };
+$('#homeBtn2').onclick = () => { pair = null; $('#game').style.display='none'; $('#menu').classList.remove('hidden'); sfx.tap(); };
+
+/* 이미지 미리 불러오기 (첫 32장) */
+addEventListener('load', () => { CARS.slice(0,32).forEach(c => { const i = new Image(); i.src = 'cars/'+c.img; }); });
+</script>
+</body>
+</html>
