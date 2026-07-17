@@ -57,7 +57,7 @@
   .gauge.show svg { opacity:1; }
   .gauge .ring { stroke:#FF6B35; stroke-width:10; fill:rgba(0,0,0,.35); stroke-linecap:round;
     stroke-dasharray:283; stroke-dashoffset:283; transform:rotate(-90deg); transform-origin:center; }
-  .gauge .hand { font-size:34px; }
+  .gauge .hand { font-size:34px; font-weight:900; fill:#fff; }
   #vs { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); color:#fff; font-size:clamp(26px,6vw,54px);
     font-weight:900; text-shadow:0 4px 0 rgba(0,0,0,.4), 0 0 24px rgba(255,209,102,.5); z-index:4; pointer-events:none; }
 
@@ -110,12 +110,13 @@
   </div>
   <div class="secTitle">고르는 방법</div>
   <div class="pillRow" id="modeRow">
-    <button class="pill on" data-mode="cam">📸 카메라 손흔들기</button>
-    <button class="pill" data-mode="touch">👆 터치로 고르기</button>
+    <button class="pill on" data-mode="ox">🧍 서서 고르기</button>
+    <button class="pill" data-mode="cam">👋 손흔들기</button>
+    <button class="pill" data-mode="touch">👆 터치</button>
   </div>
   <button class="bigbtn" id="startBtn">시작! 🏁</button>
   <div class="note">
-    📸 카메라 모드: 왼쪽 차가 좋으면 <b>화면 왼쪽</b>에서, 오른쪽 차가 좋으면 <b>화면 오른쪽</b>에서 손을 크게 흔들어요!<br>
+    🧍 서서 고르기: OX퀴즈처럼 좋아하는 차 쪽(왼쪽/오른쪽)에 <b>가서 서 있으면</b> 3·2·1 카운트 후 선택돼요! 다음 판은 <b>가운데로 돌아왔다가</b> 다시 골라요.<br>
     판매량 데이터: 2025년 국내 신차 등록 (카이즈유·KAIDA 기준, 일부 추정)
   </div>
   <button class="linkbtn" id="creditBtn">사진 출처 (Wikimedia Commons)</button>
@@ -277,7 +278,7 @@ const CARS = [{"rank":1,"b":"기아","m":"쏘렌토","u":100002,"img":"car001.we
 
 /* ================= 공통 ================= */
 const $ = s => document.querySelector(s);
-let tourSize = 32, mode = 'cam', soundOn = true;
+let tourSize = 32, mode = 'ox', soundOn = true;
 
 document.querySelectorAll('#sizeRow .pill').forEach(b => b.onclick = () => {
   document.querySelectorAll('#sizeRow .pill').forEach(x => x.classList.remove('on'));
@@ -347,40 +348,49 @@ async function startCam() {
 const mc = document.createElement('canvas'); mc.width = 64; mc.height = 48;
 const mctx = mc.getContext('2d', { willReadFrequently:true });
 let prevFrame = null, motionL = 0, motionR = 0, frameSkip = 0;
-function updateMotion() {
+let presL = 0, presR = 0; /* '서 있음' 감지: 약한 움직임도 잡아서 천천히 사라지게 */
+function updateMotion(dt) {
   if (!camReady || !video.videoWidth) return;
   if (frameSkip++ % 2 !== 0) return;
   mctx.save(); mctx.translate(mc.width,0); mctx.scale(-1,1); /* 거울 모드 */
   mctx.drawImage(video, 0, 0, mc.width, mc.height); mctx.restore();
   const img = mctx.getImageData(0,0,mc.width,mc.height).data;
   if (prevFrame) {
-    let l=0, r=0; const half = mc.width/2;
+    let l=0, r=0, wl=0, wr=0; const half = mc.width/2;
     for (let y=0;y<mc.height;y++) for (let x=0;x<mc.width;x++) {
       const i = (y*mc.width+x)*4;
       const d = Math.abs(img[i]-prevFrame[i]) + Math.abs(img[i+1]-prevFrame[i+1]) + Math.abs(img[i+2]-prevFrame[i+2]);
       if (d > 90) { if (x < half) l++; else r++; }
+      if (d > 38) { if (x < half) wl++; else wr++; }
     }
     const cell = half*mc.height;
     motionL = l/cell; motionR = r/cell;
+    /* 사람이 서서 미세하게 움직이는 것까지 잡고, 1.4초에 걸쳐 천천히 잊는다 */
+    const decay = Math.exp(-(dt*2)/1.4);
+    presL = Math.max(wl/cell, presL*decay);
+    presR = Math.max(wr/cell, presR*decay);
   }
   prevFrame = new Uint8ClampedArray(img);
 }
 
 /* ================= 토너먼트 ================= */
-let pool = [], nextPool = [], pair = null, matchIdx = 0, busy = false;
+let pool = [], nextPool = [], pair = null, matchIdx = 0, busy = false, nextT = null;
 let selL = 0, selR = 0, lastT = performance.now(), cooldown = 0;
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function roundName(n){ return n===2 ? '🏆 결승' : n===4 ? '준결승 (4강)' : n+'강'; }
 
 function startTournament() {
+  clearTimeout(nextT);
   pool = shuffle(CARS.slice()).slice(0, tourSize);
   nextPool = []; matchIdx = 0;
   $('#menu').classList.add('hidden'); $('#winner').classList.add('hidden');
   $('#game').style.display = 'block';
-  $('#camDock').classList.toggle('hidden', mode !== 'cam');
+  $('#camDock').classList.toggle('hidden', mode === 'touch');
   nextMatch();
 }
+function setHint(t) { const h = $('#camHint'); if (h.textContent !== t) h.textContent = t; }
+function setGaugeIcon(el, t) { const x = el.querySelector('.gauge .hand'); if (x.textContent !== t) x.textContent = t; }
 function setCard(el, car) {
   el.querySelector('.ph').style.backgroundImage = `url(cars/${car.img})`;
   el.querySelector('.bd').textContent = car.b;
@@ -407,6 +417,7 @@ function nextMatch() {
   $('#roundProg').textContent = `${matchIdx} / ${matchIdx + pool.length/2} 경기`;
   setCard($('#cardL'), pair[0]); setCard($('#cardR'), pair[1]);
   selL = selR = 0; busy = false; cooldown = 0.9; /* 잠깐 대기: 화면 전환 직후 오작동 방지 */
+  oxArmed = false; oxClearT = 0; presL = presR = 0; /* OX모드: 가운데로 돌아올 때까지 대기 */
   sfx.next();
 }
 function choose(side) {
@@ -421,7 +432,7 @@ function choose(side) {
   burst(r.left+r.width/2, r.top+r.height/2, 26);
   sfx.pick();
   nextPool.push(winner);
-  setTimeout(nextMatch, 1100);
+  nextT = setTimeout(nextMatch, 1100);
 }
 function showWinner(car) {
   pair = null;
@@ -439,20 +450,49 @@ $('#cardL').onclick = () => choose('L');
 $('#cardR').onclick = () => choose('R');
 
 /* ================= 메인 루프 (카메라 모드 게이지) ================= */
+let oxArmed = false, oxClearT = 0;
+const HOLD = 2.5; /* OX모드: 이만큼 서 있으면 선택 */
 (function loop(now){
   requestAnimationFrame(loop);
   const dt = Math.min(.05,(now-lastT)/1000); lastT = now;
   if (cooldown > 0) cooldown -= dt;
-  if (mode !== 'cam' || !pair || busy || cooldown > 0) return;
-  updateMotion();
-  const TH = 0.12, FILL = 1.0, DECAY = 1.6;
-  selL = motionL > TH ? Math.min(1, selL + dt/FILL) : Math.max(0, selL - dt*DECAY);
-  selR = motionR > TH ? Math.min(1, selR + dt/FILL) : Math.max(0, selR - dt*DECAY);
-  /* 양쪽 동시 감지 시 더 큰 쪽만 */
-  if (motionL > TH && motionR > TH) { if (motionL >= motionR) selR = Math.max(0, selR - dt*DECAY*2); else selL = Math.max(0, selL - dt*DECAY*2); }
+  if (mode === 'touch' || !pair || busy || cooldown > 0) return;
+  updateMotion(dt);
+
+  if (mode === 'cam') {
+    /* --- 손흔들기 모드 --- */
+    const TH = 0.12, FILL = 1.0, DECAY = 1.6;
+    selL = motionL > TH ? Math.min(1, selL + dt/FILL) : Math.max(0, selL - dt*DECAY);
+    selR = motionR > TH ? Math.min(1, selR + dt/FILL) : Math.max(0, selR - dt*DECAY);
+    if (motionL > TH && motionR > TH) { if (motionL >= motionR) selR = Math.max(0, selR - dt*DECAY*2); else selL = Math.max(0, selL - dt*DECAY*2); }
+    setGaugeIcon($('#cardL'), '👋'); setGaugeIcon($('#cardR'), '👋');
+    setHint('👋 좋아하는 차 쪽에서 손을 흔들어요!');
+    document.querySelector('#camWrap .half.l').classList.toggle('hot', motionL > TH);
+    document.querySelector('#camWrap .half.r').classList.toggle('hot', motionR > TH);
+  } else {
+    /* --- OX 서서 고르기 모드 --- */
+    const PTH = 0.045;
+    const onL = presL > PTH && presL > presR*1.4;
+    const onR = presR > PTH && presR > presL*1.4;
+    if (!oxArmed) {
+      /* 지난 판 자리에서 그대로 이어지지 않게: 먼저 가운데(양쪽 비움)로 */
+      if (presL < PTH && presR < PTH) { oxClearT += dt; if (oxClearT > 0.5) oxArmed = true; }
+      else oxClearT = 0;
+      setHint('🚶 가운데로 왔다가, 좋아하는 차 쪽으로 가서 서세요!');
+      selL = selR = 0;
+    } else {
+      selL = onL ? Math.min(1, selL + dt/HOLD) : Math.max(0, selL - dt*1.2);
+      selR = onR ? Math.min(1, selR + dt/HOLD) : Math.max(0, selR - dt*1.2);
+      const cntL = Math.ceil(HOLD - selL*HOLD), cntR = Math.ceil(HOLD - selR*HOLD);
+      setGaugeIcon($('#cardL'), selL > 0.03 ? String(Math.max(1,cntL)) : '🧍');
+      setGaugeIcon($('#cardR'), selR > 0.03 ? String(Math.max(1,cntR)) : '🧍');
+      setHint(selL > 0.03 || selR > 0.03 ? '⏱ 그대로 서 있어요!' : '🧍 좋아하는 차 쪽에 가만히 서 있으면 선택돼요!');
+    }
+    document.querySelector('#camWrap .half.l').classList.toggle('hot', onL);
+    document.querySelector('#camWrap .half.r').classList.toggle('hot', onR);
+  }
+
   setGauge($('#cardL'), selL); setGauge($('#cardR'), selR);
-  document.querySelector('#camWrap .half.l').classList.toggle('hot', motionL > TH);
-  document.querySelector('#camWrap .half.r').classList.toggle('hot', motionR > TH);
   if (selL >= 1) { selL = selR = 0; choose('L'); }
   else if (selR >= 1) { selL = selR = 0; choose('R'); }
 })(lastT);
@@ -460,7 +500,7 @@ $('#cardR').onclick = () => choose('R');
 /* ================= 시작 / 홈 ================= */
 $('#startBtn').onclick = async () => {
   ac(); sfx.tap();
-  if (mode === 'cam') {
+  if (mode !== 'touch') {
     const ok = await startCam();
     if (!ok) { $('#camError').classList.remove('hidden'); return; }
   }
@@ -473,7 +513,7 @@ $('#touchFallbackBtn').onclick = () => {
   startTournament();
 };
 $('#againBtn').onclick = () => { $('#winner').classList.add('hidden'); $('#menu').classList.remove('hidden'); sfx.tap(); };
-$('#homeBtn2').onclick = () => { pair = null; $('#game').style.display='none'; $('#menu').classList.remove('hidden'); sfx.tap(); };
+$('#homeBtn2').onclick = () => { clearTimeout(nextT); pair = null; $('#game').style.display='none'; $('#menu').classList.remove('hidden'); sfx.tap(); };
 
 /* 이미지 미리 불러오기 (첫 32장) */
 addEventListener('load', () => { CARS.slice(0,32).forEach(c => { const i = new Image(); i.src = 'cars/'+c.img; }); });
