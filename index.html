@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>우리집 게임방 🎮</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; min-height:100%; font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); }
+  .wrap { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px; }
+  h1 { color:#fff; font-size:clamp(30px,7vw,56px); text-shadow:0 4px 0 rgba(0,0,0,.2); margin-bottom:6px; text-align:center; }
+  .sub { color:rgba(255,255,255,.9); font-weight:700; font-size:clamp(14px,3vw,20px); margin-bottom:30px; text-align:center; line-height:1.6; }
+  a.card { display:flex; align-items:center; gap:18px; width:min(560px,92vw); background:rgba(255,255,255,.96);
+    border-radius:26px; padding:20px 24px; margin-bottom:16px; text-decoration:none;
+    box-shadow:0 6px 0 rgba(0,0,0,.18), 0 12px 24px rgba(0,0,0,.18); }
+  a.card:active { transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  .ic { font-size:clamp(38px,8vw,54px); }
+  .tt { font-size:clamp(19px,4.2vw,27px); font-weight:900; color:#333; }
+  .dd { font-size:clamp(12px,2.8vw,16px); color:#777; font-weight:600; margin-top:3px; line-height:1.45; }
+  .tip { margin-top:18px; color:rgba(255,255,255,.85); font-size:clamp(12px,2.6vw,15px); font-weight:600;
+    background:rgba(0,0,0,.18); border-radius:16px; padding:12px 18px; max-width:560px; text-align:center; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎮 우리집 게임방</h1>
+  <div class="sub">애플TV에 미러링하고 같이 놀아요!</div>
+  <a class="card" href="fruit.html">
+    <span class="ic">🍎</span>
+    <span><div class="tt">과일 받기 대작전</div><div class="dd">아이패드를 둘이 같이 터치! 바구니로 과일을 받아 항아리를 채워요</div></span>
+  </a>
+  <a class="card" href="camera.html">
+    <span class="ic">📸</span>
+    <span><div class="tt">카메라 놀이터 (8가지 게임)</div><div class="dd">무궁화 · 풍선 터뜨리기 · 색깔 보물찾기 · 두더지 잡기 · 퀴즈 · 비눗방울 팡팡 · 반딧불이 잡기 · 무지개 만들기</div></span>
+  </a>
+  <div class="tip">
+    📺 제어 센터 → 화면 미러링 → Apple TV<br>
+    📸 카메라 게임은 아이폰을 TV 아래 세워두고 하면 딱 좋아요
+  </div>
+</div>
+</body>
+</html>

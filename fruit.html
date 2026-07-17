@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>과일 받기 대작전 🍎</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#87CEEB; touch-action:none; overscroll-behavior:none;
+    font-family:-apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  #game { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#7EC8E3 0%,#B7E4C7 100%); z-index:10; text-align:center; padding:20px; }
+  .overlay.hidden { display:none; }
+  h1 { font-size:clamp(36px,7vw,72px); color:#fff; text-shadow:0 4px 0 rgba(0,0,0,.15); margin-bottom:8px; }
+  .sub { font-size:clamp(16px,3vw,26px); color:#2d6a4f; font-weight:700; margin-bottom:28px; line-height:1.6;
+    background:rgba(255,255,255,.7); border-radius:20px; padding:14px 24px; }
+  .bigbtn { font-size:clamp(26px,5vw,44px); font-weight:900; color:#fff; background:linear-gradient(180deg,#FF9E44,#FF6B35);
+    border:none; border-radius:32px; padding:20px 64px; box-shadow:0 8px 0 #d14e1f, 0 12px 24px rgba(0,0,0,.2);
+    cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .bigbtn:active { transform:translateY(6px); box-shadow:0 2px 0 #d14e1f; }
+  .emoji-row { font-size:clamp(34px,6vw,60px); margin-bottom:20px; letter-spacing:8px; }
+  #clearOverlay { background:rgba(30,20,60,.55); }
+  #clearCard { background:#fff; border-radius:36px; padding:36px 48px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  #clearCard h2 { font-size:clamp(30px,6vw,54px); color:#FF6B35; margin-bottom:10px; }
+  #clearCard p { font-size:clamp(18px,3.5vw,28px); color:#555; margin-bottom:24px; font-weight:700; }
+  #soundBtn { position:fixed; top:12px; right:12px; z-index:20; font-size:26px; background:rgba(255,255,255,.85);
+    border:none; border-radius:50%; width:52px; height:52px; box-shadow:0 3px 8px rgba(0,0,0,.2); cursor:pointer; display:none; }
+  .hint { position:fixed; bottom:10px; width:100%; text-align:center; color:rgba(255,255,255,.95); font-weight:800;
+    font-size:clamp(13px,2.2vw,18px); z-index:5; text-shadow:0 2px 4px rgba(0,0,0,.3); pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="soundBtn">🔊</button>
+<button id="fsBtn" style="position:fixed; top:12px; right:74px; z-index:20; font-size:22px; background:rgba(255,255,255,.85);
+  border:none; border-radius:50%; width:52px; height:52px; box-shadow:0 3px 8px rgba(0,0,0,.2); cursor:pointer;">⛶</button>
+
+<div class="overlay" id="startOverlay">
+  <div class="emoji-row">🍎 🍌 🍇 🍓 🍊</div>
+  <h1>과일 받기 대작전</h1>
+  <div class="sub">
+    왼쪽 바구니는 <b>엄마·아빠</b> 손가락으로!<br>
+    오른쪽 바구니는 <b>우리 아이</b> 손가락으로!<br>
+    떨어지는 과일을 받아서 <b>함께</b> 항아리를 채워요 🏺
+  </div>
+  <button class="bigbtn" id="startBtn">시 작 !</button>
+</div>
+
+<div class="overlay hidden" id="clearOverlay">
+  <div id="clearCard">
+    <div class="emoji-row" id="clearEmoji">🎉 🏆 🎉</div>
+    <h2 id="clearTitle">참 잘했어요!</h2>
+    <p id="clearMsg">항아리를 가득 채웠어요!</p>
+    <button class="bigbtn" id="nextBtn">다음 판 →</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cvs.width = W * DPR; cvs.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+resize();
+
+/* ---------- 사운드 (WebAudio 합성음) ---------- */
+let AC = null, soundOn = true;
+function initAudio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(freq, dur, type, vol, delay) {
+  if (!AC || !soundOn) return;
+  const t = AC.currentTime + (delay || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol || 0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  pop()   { tone(660, .12, 'sine', .2); tone(990, .15, 'sine', .12, .04); },
+  star()  { [523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.15,i*.07)); },
+  heart() { [523,659,784,880,1047,1319].forEach((f,i)=>tone(f,.22,'triangle',.16,i*.08)); },
+  miss()  { tone(220, .2, 'sine', .06); },
+  clear() { [523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,.25,'triangle',.18,i*.12)); }
+};
+document.getElementById('soundBtn').addEventListener('click', e => {
+  soundOn = !soundOn;
+  e.target.textContent = soundOn ? '🔊' : '🔇';
+});
+document.getElementById('fsBtn').addEventListener('click', () => {
+  const el = document.documentElement;
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else if ((el.requestFullscreen || el.webkitRequestFullscreen) && !navigator.standalone) {
+    try { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch(e) {
+      alert('아이폰은 Safari 공유 버튼 → "홈 화면에 추가"로 실행하면 완전 전체화면이 돼요!');
+    }
+  } else {
+    alert('아이폰은 Safari 공유 버튼 → "홈 화면에 추가"로 실행하면 완전 전체화면이 돼요!');
+  }
+});
+if (navigator.standalone) document.getElementById('fsBtn').style.display = 'none';
+
+/* ---------- 게임 상태 ---------- */
+const FRUITS = ['🍎','🍌','🍇','🍓','🍊','🍉','🍑','🍍'];
+const state = {
+  running:false, level:1, score:0, goal:10,
+  fruits:[], particles:[], floaters:[],
+  spawnTimer:0, heartTimer:0,
+  heartL:null, heartR:null, heartCaughtL:0, heartCaughtR:0,
+  clouds:[]
+};
+const baskets = {
+  L:{ x:0, tx:0, color:'#4D96FF', label:'엄마아빠', emoji:'🧺' },
+  R:{ x:0, tx:0, color:'#FF6B9D', label:'우리아이', emoji:'🧺' }
+};
+function basketY(){ return H - Math.max(70, H*0.13); }
+function basketW(){ return Math.max(110, Math.min(W*0.17, 190)); }
+function fruitSize(){ return Math.max(44, Math.min(W*0.07, 74)); }
+
+function initClouds() {
+  state.clouds = [];
+  for (let i=0;i<5;i++) state.clouds.push({ x:Math.random()*W, y:30+Math.random()*H*0.3, s:.6+Math.random()*.9, v:8+Math.random()*12 });
+}
+initClouds();
+baskets.L.x = baskets.L.tx = W*0.25;
+baskets.R.x = baskets.R.tx = W*0.75;
+
+/* ---------- 터치: 왼쪽 절반=왼쪽 바구니, 오른쪽 절반=오른쪽 바구니 ---------- */
+function handleTouches(e) {
+  e.preventDefault();
+  for (const t of e.touches) {
+    if (t.clientX < W/2) baskets.L.tx = Math.min(t.clientX, W/2 - basketW()/2 - 4);
+    else baskets.R.tx = Math.max(t.clientX, W/2 + basketW()/2 + 4);
+  }
+}
+cvs.addEventListener('touchstart', handleTouches, {passive:false});
+cvs.addEventListener('touchmove', handleTouches, {passive:false});
+/* 마우스(테스트용) */
+cvs.addEventListener('mousemove', e => {
+  if (e.clientX < W/2) baskets.L.tx = e.clientX; else baskets.R.tx = e.clientX;
+});
+
+/* ---------- 스폰 ---------- */
+function levelSpeed(){ return 90 + state.level*22 + Math.random()*40; }
+function spawnInterval(){ return Math.max(0.75, 1.7 - state.level*0.12); }
+
+function spawnFruit(side, special) {
+  const half = W/2, margin = fruitSize();
+  let x;
+  if (side === 'L') x = margin + Math.random()*(half - margin*2);
+  else if (side === 'R') x = half + margin + Math.random()*(half - margin*2);
+  else x = margin + Math.random()*(W - margin*2);
+  const isStar = !special && Math.random() < 0.12;
+  state.fruits.push({
+    x, y:-fruitSize(), v:levelSpeed()*(isStar?1.15:1),
+    emoji: special ? '💛' : (isStar ? '⭐' : FRUITS[(Math.random()*FRUITS.length)|0]),
+    star:isStar, special:!!special, side, wob:Math.random()*6.28, rot:(Math.random()-.5)*2
+  });
+}
+
+/* ---------- 이펙트 ---------- */
+function burst(x, y, color, n) {
+  for (let i=0;i<(n||14);i++) {
+    const a = Math.random()*6.28, sp = 60+Math.random()*160;
+    state.particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-60, life:.9, max:.9,
+      color: color || ['#FFD166','#EF476F','#06D6A0','#4D96FF','#FF9E44'][(Math.random()*5)|0], r:4+Math.random()*5 });
+  }
+}
+function floatText(x, y, text, color, size) {
+  state.floaters.push({ x, y, text, color:color||'#fff', size:size||30, life:1.1, max:1.1 });
+}
+function fireworks() {
+  for (let i=0;i<6;i++) setTimeout(() => burst(W*0.15+Math.random()*W*0.7, H*0.15+Math.random()*H*0.4, null, 22), i*180);
+}
+
+/* ---------- 진행 ---------- */
+function addScore(n, x, y) {
+  state.score += n;
+  if (state.score >= state.goal) {
+    state.score = state.goal;
+    levelClear();
+  }
+}
+function levelClear() {
+  state.running = false;
+  sfx.clear(); fireworks();
+  const titles = ['참 잘했어요! 🏆','최고의 한 팀! 💪','우와, 대단해요! 🌟','환상의 콤비! 💕'];
+  document.getElementById('clearTitle').textContent = titles[(state.level-1) % titles.length];
+  document.getElementById('clearMsg').textContent = state.level + '판 성공! 항아리를 가득 채웠어요!';
+  setTimeout(() => document.getElementById('clearOverlay').classList.remove('hidden'), 900);
+}
+function startLevel() {
+  state.fruits = []; state.particles = []; state.floaters = [];
+  state.score = 0; state.goal = 8 + state.level*3;
+  state.spawnTimer = 0.4; state.heartTimer = 11;
+  state.heartL = null; state.heartR = null;
+  state.running = true;
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('soundBtn').style.display = 'block';
+  state.level = 1; startLevel();
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  initAudio();
+  document.getElementById('clearOverlay').classList.add('hidden');
+  state.level++; startLevel();
+});
+
+/* ---------- 업데이트 ---------- */
+function update(dt) {
+  baskets.L.x += (baskets.L.tx - baskets.L.x) * Math.min(1, dt*14);
+  baskets.R.x += (baskets.R.tx - baskets.R.x) * Math.min(1, dt*14);
+  const bw = basketW(), by = basketY(), fs = fruitSize();
+  baskets.L.x = Math.max(bw/2, Math.min(W/2 - bw/2 - 4, baskets.L.x));
+  baskets.R.x = Math.max(W/2 + bw/2 + 4, Math.min(W - bw/2, baskets.R.x));
+
+  for (const c of state.clouds) { c.x += c.v*dt; if (c.x > W+120) c.x = -120; }
+
+  if (!state.running) {
+    updateFx(dt);
+    return;
+  }
+
+  state.spawnTimer -= dt;
+  if (state.spawnTimer <= 0) {
+    spawnFruit(Math.random()<0.5?'L':'R');
+    state.spawnTimer = spawnInterval();
+  }
+
+  /* 황금하트 협동 이벤트: 양쪽에 동시에 떨어짐, 둘 다 잡으면 보너스 */
+  state.heartTimer -= dt;
+  if (state.heartTimer <= 0) {
+    spawnFruit('L', true); spawnFruit('R', true);
+    floatText(W/2, H*0.25, '💛 같이 잡아요! 💛', '#FFD166', 40);
+    state.heartTimer = 14 + Math.random()*6;
+    state.heartCaughtL = 0; state.heartCaughtR = 0;
+  }
+
+  for (let i = state.fruits.length-1; i >= 0; i--) {
+    const f = state.fruits[i];
+    f.y += f.v*dt; f.wob += dt*3;
+    const b = f.x < W/2 ? baskets.L : baskets.R;
+    if (f.y > by - fs*0.3 && f.y < by + fs*0.6 && Math.abs(f.x - b.x) < bw/2 + fs*0.25) {
+      state.fruits.splice(i,1);
+      if (f.special) {
+        if (f.x < W/2) state.heartCaughtL = 1; else state.heartCaughtR = 1;
+        burst(f.x, by, '#FFD166', 16); sfx.pop();
+        if (state.heartCaughtL && state.heartCaughtR) {
+          sfx.heart();
+          floatText(W/2, H*0.35, '💕 환상의 콤비! +5 💕', '#FF6B9D', 44);
+          burst(W/2, H*0.4, '#FF6B9D', 26);
+          addScore(5, W/2, H*0.4);
+        } else {
+          floatText(f.x, by-40, '+1', '#fff', 30);
+          addScore(1, f.x, by);
+        }
+      } else if (f.star) {
+        sfx.star(); burst(f.x, by, '#FFD166', 18);
+        floatText(f.x, by-40, '⭐ +3', '#FFD166', 36);
+        addScore(3, f.x, by);
+      } else {
+        sfx.pop(); burst(f.x, by, null, 10);
+        floatText(f.x, by-40, '+1', '#fff', 28);
+        addScore(1, f.x, by);
+      }
+    } else if (f.y > H + fs) {
+      state.fruits.splice(i,1);
+      sfx.miss();
+    }
+  }
+  updateFx(dt);
+}
+function updateFx(dt) {
+  for (let i = state.particles.length-1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 300*dt;
+    if (p.life <= 0) state.particles.splice(i,1);
+  }
+  for (let i = state.floaters.length-1; i >= 0; i--) {
+    const f = state.floaters[i];
+    f.life -= dt; f.y -= 40*dt;
+    if (f.life <= 0) state.floaters.splice(i,1);
+  }
+}
+
+/* ---------- 렌더 ---------- */
+function draw() {
+  /* 하늘 */
+  const sky = ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#7EC8E3'); sky.addColorStop(.75,'#B7E4C7'); sky.addColorStop(1,'#95D5B2');
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+
+  /* 구름 */
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  for (const c of state.clouds) {
+    ctx.save(); ctx.translate(c.x,c.y); ctx.scale(c.s,c.s);
+    ctx.beginPath();
+    ctx.arc(0,0,22,0,6.29); ctx.arc(24,6,18,0,6.29); ctx.arc(-24,6,18,0,6.29); ctx.arc(0,10,26,0,6.29);
+    ctx.fill(); ctx.restore();
+  }
+
+  /* 잔디 */
+  ctx.fillStyle = '#74C69D';
+  ctx.fillRect(0, H-Math.max(40,H*0.07), W, H);
+
+  /* 중앙 점선 */
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 3; ctx.setLineDash([12,14]);
+  ctx.beginPath(); ctx.moveTo(W/2, H*0.14); ctx.lineTo(W/2, H); ctx.stroke(); ctx.setLineDash([]);
+
+  const fs = fruitSize(), bw = basketW(), by = basketY();
+
+  /* 과일 */
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of state.fruits) {
+    ctx.save();
+    ctx.translate(f.x + Math.sin(f.wob)*6, f.y);
+    ctx.rotate(Math.sin(f.wob)*0.15*f.rot);
+    if (f.star || f.special) {
+      ctx.shadowColor = f.special ? '#FF6B9D' : '#FFD166';
+      ctx.shadowBlur = 24;
+    }
+    ctx.font = fs + 'px sans-serif';
+    ctx.fillText(f.emoji, 0, 0);
+    ctx.restore();
+  }
+
+  /* 바구니 */
+  for (const key of ['L','R']) {
+    const b = baskets[key];
+    ctx.save();
+    ctx.translate(b.x, by);
+    /* 몸통 */
+    ctx.fillStyle = b.color;
+    roundRect(-bw/2, -8, bw, Math.max(34, H*0.05), 14); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    roundRect(-bw/2+6, -4, bw-12, 10, 6); ctx.fill();
+    /* 바구니 이모지 */
+    ctx.font = Math.max(34, bw*0.34) + 'px sans-serif';
+    ctx.fillText('🧺', 0, Math.max(20, H*0.028));
+    /* 라벨 */
+    ctx.font = '800 ' + Math.max(14, W*0.015) + 'px sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 6;
+    ctx.fillText(b.label, 0, Math.max(52, H*0.07));
+    ctx.restore();
+  }
+
+  /* 파티클 */
+  for (const p of state.particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.max);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.29); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* 항아리 게이지 (상단 중앙) */
+  drawJar();
+
+  /* 떠오르는 텍스트 */
+  for (const f of state.floaters) {
+    ctx.globalAlpha = Math.max(0, f.life / f.max);
+    ctx.font = '900 ' + f.size + 'px sans-serif';
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 8;
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+
+  /* 레벨 표시 */
+  ctx.font = '900 ' + Math.max(16, W*0.018) + 'px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'left';
+  ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5;
+  ctx.fillText('🚩 ' + state.level + '판', 16, 34);
+  ctx.shadowBlur = 0;
+}
+function drawJar() {
+  const jw = Math.min(W*0.32, 340), jh = Math.max(26, H*0.045);
+  const x = W/2 - jw/2, y = 14;
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  roundRect(x-6, y-6, jw+12, jh+12, (jh+12)/2); ctx.fill();
+  ctx.fillStyle = '#E9ECEF';
+  roundRect(x, y, jw, jh, jh/2); ctx.fill();
+  const ratio = Math.min(1, state.score / state.goal);
+  if (ratio > 0) {
+    const g = ctx.createLinearGradient(x, 0, x+jw, 0);
+    g.addColorStop(0,'#FF9E44'); g.addColorStop(1,'#FF6B35');
+    ctx.fillStyle = g;
+    roundRect(x, y, Math.max(jh, jw*ratio), jh, jh/2); ctx.fill();
+  }
+  ctx.font = '900 ' + (jh*0.62) + 'px sans-serif';
+  ctx.fillStyle = '#5c3d00';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🏺 ' + state.score + ' / ' + state.goal, W/2, y + jh/2 + 1);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- 루프 ---------- */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last)/1000);
+  last = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>카메라 놀이터 📸</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#1a1a2e; touch-action:none; overscroll-behavior:none;
+    font-family:-apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  #game { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:10; text-align:center; padding:20px; }
+  .hidden { display:none !important; }
+  #menuOverlay { background:linear-gradient(160deg,#667eea 0%,#764ba2 100%); }
+  h1 { font-size:clamp(34px,6.5vw,64px); color:#fff; text-shadow:0 4px 0 rgba(0,0,0,.2); margin-bottom:6px; }
+  .sub { font-size:clamp(15px,2.6vw,22px); color:rgba(255,255,255,.92); font-weight:700; margin-bottom:26px; line-height:1.6; }
+  #menuOverlay { overflow-y:auto; justify-content:flex-start; padding-top:max(24px, env(safe-area-inset-top)); }
+  .menuGrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(340px,90vw), 1fr)); gap:10px;
+    width:min(760px,94vw); padding-bottom:30px; }
+  .menuBtn { display:flex; align-items:center; gap:14px; width:100%; background:rgba(255,255,255,.95);
+    border:none; border-radius:22px; padding:12px 18px; cursor:pointer; text-align:left;
+    box-shadow:0 6px 0 rgba(0,0,0,.18), 0 10px 20px rgba(0,0,0,.15); -webkit-tap-highlight-color:transparent; }
+  .menuBtn:active { transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  .menuBtn .ic { font-size:clamp(34px,5vw,48px); }
+  .menuBtn .tt { font-size:clamp(18px,3.2vw,26px); font-weight:900; color:#333; }
+  .menuBtn .dd { font-size:clamp(12px,2vw,16px); color:#777; font-weight:600; margin-top:2px; }
+  .bigbtn { font-size:clamp(22px,4.5vw,38px); font-weight:900; color:#fff; background:linear-gradient(180deg,#FF9E44,#FF6B35);
+    border:none; border-radius:28px; padding:16px 52px; box-shadow:0 7px 0 #d14e1f, 0 12px 24px rgba(0,0,0,.25);
+    cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .bigbtn:active { transform:translateY(5px); box-shadow:0 2px 0 #d14e1f; }
+  #homeBtn { position:fixed; top:12px; left:12px; z-index:20; font-size:24px; background:rgba(255,255,255,.9);
+    border:none; border-radius:50%; width:50px; height:50px; box-shadow:0 3px 8px rgba(0,0,0,.3); cursor:pointer; display:none; }
+  #soundBtn { position:fixed; top:12px; right:12px; z-index:20; font-size:24px; background:rgba(255,255,255,.9);
+    border:none; border-radius:50%; width:50px; height:50px; box-shadow:0 3px 8px rgba(0,0,0,.3); cursor:pointer; display:none; }
+  #fsBtn { position:fixed; top:12px; right:74px; z-index:20; font-size:22px; background:rgba(255,255,255,.9);
+    border:none; border-radius:50%; width:50px; height:50px; box-shadow:0 3px 8px rgba(0,0,0,.3); cursor:pointer; }
+  #fsTip { position:fixed; inset:0; z-index:40; background:rgba(20,20,40,.9); display:flex; align-items:center; justify-content:center; padding:24px; }
+  #fsTip .card { background:#fff; border-radius:26px; padding:28px 30px; max-width:520px; text-align:center; }
+  #fsTip h2 { color:#333; font-size:clamp(20px,4vw,28px); margin-bottom:12px; }
+  #fsTip p { color:#555; font-size:clamp(14px,2.8vw,19px); line-height:1.8; font-weight:600; text-align:left; margin-bottom:18px; }
+  #waveTrack { width:min(420px,70vw); height:18px; background:#eee; border-radius:9px; margin:14px auto 0; overflow:hidden; }
+  #waveFill { height:100%; width:0%; background:linear-gradient(90deg,#FF9E44,#FF6B35); border-radius:9px; transition:width .1s linear; }
+  #waveHint { margin-top:16px; font-size:clamp(15px,3vw,21px); font-weight:800; color:#4D6FE8; }
+  #camError { background:rgba(20,20,40,.96); z-index:30; }
+  #camError .card { background:#fff; border-radius:28px; padding:30px 34px; max-width:560px; }
+  #camError h2 { color:#e63946; font-size:clamp(22px,4vw,32px); margin-bottom:14px; }
+  #camError p { color:#444; font-size:clamp(14px,2.6vw,19px); line-height:1.7; font-weight:600; text-align:left; }
+  #winOverlay { background:rgba(30,20,60,.55); z-index:15; }
+  #winCard { background:#fff; border-radius:36px; padding:34px 46px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  #winCard .em { font-size:clamp(36px,7vw,60px); margin-bottom:12px; }
+  #winCard h2 { font-size:clamp(28px,5.5vw,48px); color:#FF6B35; margin-bottom:8px; }
+  #winCard p { font-size:clamp(16px,3vw,24px); color:#555; margin-bottom:22px; font-weight:700; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="homeBtn">🏠</button>
+<button id="soundBtn">🔊</button>
+<button id="fsBtn">⛶</button>
+
+<div id="fsTip" class="hidden">
+  <div class="card">
+    <h2>📱 진짜 전체화면으로 즐기는 법</h2>
+    <p>
+      아이폰 Safari는 버튼으로 전체화면이 안 돼요. 대신:<br><br>
+      1. Safari 아래 <b>공유 버튼</b> (네모+화살표) 탭<br>
+      2. <b>"홈 화면에 추가"</b> 선택<br>
+      3. 홈 화면에 생긴 아이콘으로 실행<br><br>
+      → 주소창 없이 <b>완전 전체화면</b>으로 열려요!
+    </p>
+    <button class="bigbtn" id="fsTipClose">알겠어요!</button>
+  </div>
+</div>
+
+<div class="overlay" id="menuOverlay">
+  <h1>📸 카메라 놀이터</h1>
+  <div class="sub">아이폰을 세워두고 TV에 미러링하면<br>내 모습이 TV에 나오면서 몸으로 노는 게임!</div>
+  <div class="menuGrid">
+  <button class="menuBtn" data-game="mugung">
+    <span class="ic">🌸</span>
+    <span><div class="tt">무궁화 꽃이 피었습니다</div><div class="dd">멈춰야 할 때 움직이면 카메라한테 딱 걸려요!</div></span>
+  </button>
+  <button class="menuBtn" data-game="balloon">
+    <span class="ic">🎈</span>
+    <span><div class="tt">몸으로 풍선 터뜨리기</div><div class="dd">화면 속 풍선을 손을 휘저어 펑펑 터뜨려요!</div></span>
+  </button>
+  <button class="menuBtn" data-game="color">
+    <span class="ic">🌈</span>
+    <span><div class="tt">색깔 보물찾기</div><div class="dd">집에서 그 색깔 물건을 찾아와 카메라에 비춰요!</div></span>
+  </button>
+  <button class="menuBtn" data-game="mole">
+    <span class="ic">🐹</span>
+    <span><div class="tt">두더지 잡기</div><div class="dd">화면 속 구멍에서 나오는 두더지를 손으로 팡팡!</div></span>
+  </button>
+  <button class="menuBtn" data-game="quiz">
+    <span class="ic">🧠</span>
+    <span><div class="tt">왼쪽? 오른쪽? 퀴즈</div><div class="dd">정답이라고 생각하는 쪽에서 손을 흔들어 맞혀요!</div></span>
+  </button>
+  <button class="menuBtn" data-game="bubble">
+    <span class="ic">🫧</span>
+    <span><div class="tt">비눗방울 팡팡</div><div class="dd">둥실둥실 떠다니는 비눗방울을 손으로 톡톡! 황금방울은 3점!</div></span>
+  </button>
+  <button class="menuBtn" data-game="firefly">
+    <span class="ic">✨</span>
+    <span><div class="tt">반딧불이 잡기</div><div class="dd">깜깜한 밤, 반짝이는 반딧불이를 손으로 살짝 잡아 병에 모아요</div></span>
+  </button>
+  <button class="menuBtn" data-game="rainbow">
+    <span class="ic">🌈</span>
+    <span><div class="tt">무지개 만들기</div><div class="dd">빨주노초파 색깔 물건을 하나씩 찾아와서 무지개를 완성해요!</div></span>
+  </button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="camError">
+  <div class="card">
+    <h2>📷 카메라를 켤 수 없어요</h2>
+    <p>
+      • 카메라 권한 요청이 뜨면 <b>허용</b>을 눌러주세요.<br>
+      • 권한 창이 안 뜨면: 설정 → Safari(또는 Claude 앱) → 카메라 → 허용<br>
+      • 이 파일을 <b>Safari 브라우저</b>에서 열면 가장 잘 됩니다.<br><br>
+      허용한 뒤 아래 버튼을 눌러주세요.
+    </p>
+    <br>
+    <button class="bigbtn" id="retryBtn">다시 시도</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winOverlay">
+  <div id="winCard">
+    <div class="em" id="winEmoji">🎉 🏆 🎉</div>
+    <h2 id="winTitle">참 잘했어요!</h2>
+    <p id="winMsg"></p>
+    <div id="waveHint">🙌 손을 크게 흔들면 다시 시작!</div>
+    <div id="waveTrack"><div id="waveFill"></div></div>
+    <br>
+    <button class="bigbtn" id="winAgainBtn">한 번 더!</button>
+    &nbsp;
+    <button class="bigbtn" id="winHomeBtn" style="background:linear-gradient(180deg,#6a8ef7,#4D6FE8); box-shadow:0 7px 0 #2d4dbd, 0 12px 24px rgba(0,0,0,.25);">처음으로</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================= 공통 ================= */
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cvs.width = W * DPR; cvs.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+resize();
+
+let AC = null, soundOn = true;
+function initAudio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(freq, dur, type, vol, delay) {
+  if (!AC || !soundOn) return;
+  const t = AC.currentTime + (delay || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol || .15, t);
+  g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t); o.stop(t + dur + .05);
+}
+const sfx = {
+  pop()    { tone(660,.12,'sine',.22); tone(990,.15,'sine',.13,.04); },
+  good()   { [523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.16,i*.07)); },
+  buzz()   { tone(160,.5,'sawtooth',.14); tone(110,.5,'sawtooth',.1,.05); },
+  win()    { [523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,.25,'triangle',.18,i*.12)); },
+  tick()   { tone(880,.06,'square',.06); },
+  camera() { tone(1200,.08,'square',.12); tone(800,.1,'square',.1,.08); }
+};
+/* --- 음성 합성: iOS Safari 호환 강화 --- */
+let koVoice = null, speechPrimed = false;
+function loadVoices() {
+  if (!window.speechSynthesis) return;
+  const vs = speechSynthesis.getVoices() || [];
+  koVoice = vs.find(v => v.lang === 'ko-KR') || vs.find(v => (v.lang||'').indexOf('ko') === 0) || null;
+}
+if (window.speechSynthesis) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+function primeSpeech() {
+  /* iOS는 사용자 터치 안에서 한 번 speak해야 이후 음성이 나옴 */
+  if (speechPrimed || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance('시작');
+    u.lang = 'ko-KR'; u.volume = 0.02; u.rate = 2;
+    speechSynthesis.speak(u);
+    speechPrimed = true;
+  } catch(e){}
+}
+function say(text, rate) {
+  if (!soundOn || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    /* iOS 버그: cancel 직후 speak는 씹힘 → 짧게 기다렸다 말하기 */
+    setTimeout(() => {
+      try {
+        speechSynthesis.resume();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'ko-KR';
+        if (koVoice) u.voice = koVoice;
+        u.rate = rate || 1; u.pitch = 1.1; u.volume = 1;
+        speechSynthesis.speak(u);
+      } catch(e){}
+    }, 80);
+  } catch(e){}
+}
+document.getElementById('soundBtn').addEventListener('click', e => {
+  soundOn = !soundOn;
+  if (!soundOn && window.speechSynthesis) speechSynthesis.cancel();
+  e.target.textContent = soundOn ? '🔊' : '🔇';
+});
+
+/* --- 전체화면 --- */
+const fsBtn = document.getElementById('fsBtn');
+function fsSupported() {
+  const el = document.documentElement;
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+}
+fsBtn.addEventListener('click', () => {
+  const el = document.documentElement;
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else if (fsSupported() && !navigator.standalone) {
+    try {
+      (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    } catch(e) { document.getElementById('fsTip').classList.remove('hidden'); }
+  } else {
+    document.getElementById('fsTip').classList.remove('hidden');
+  }
+});
+document.getElementById('fsTipClose').addEventListener('click', () => {
+  document.getElementById('fsTip').classList.add('hidden');
+});
+/* 홈화면 앱으로 실행 중이면(이미 전체화면) 버튼 숨김 */
+if (navigator.standalone) fsBtn.style.display = 'none';
+
+/* ================= 카메라 ================= */
+const video = document.createElement('video');
+video.setAttribute('playsinline',''); video.playsInline = true; video.muted = true;
+let camReady = false;
+async function startCam() {
+  if (camReady) return true;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no mediaDevices');
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'user', width:{ideal:1280}, height:{ideal:720} }, audio:false
+    });
+    video.srcObject = stream;
+    await video.play();
+    camReady = true;
+    return true;
+  } catch(e) {
+    document.getElementById('camError').classList.remove('hidden');
+    return false;
+  }
+}
+/* cover-fit 소스 크롭 계산 */
+function coverCrop() {
+  const vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+  const scale = Math.max(W / vw, H / vh);
+  const sw = W / scale, sh = H / scale;
+  return { sx:(vw - sw)/2, sy:(vh - sh)/2, sw, sh };
+}
+function drawVideo(alpha) {
+  if (!camReady || !video.videoWidth) { ctx.fillStyle = '#222'; ctx.fillRect(0,0,W,H); return; }
+  const c = coverCrop();
+  ctx.save();
+  ctx.globalAlpha = alpha == null ? 1 : alpha;
+  ctx.translate(W, 0); ctx.scale(-1, 1); /* 거울 모드 */
+  ctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, W, H);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* ================= 모션 감지 ================= */
+const GX = 16, GY = 12;
+const mc = document.createElement('canvas'); mc.width = 96; mc.height = 72;
+const mctx = mc.getContext('2d', { willReadFrequently:true });
+let prevFrame = null;
+const motionGrid = new Float32Array(GX * GY);
+let globalMotion = 0;
+let frameSkip = 0;
+function updateMotion() {
+  if (!camReady || !video.videoWidth) return;
+  if (frameSkip++ % 2 !== 0) return; /* 절반 프레임만 분석 */
+  const c = coverCrop();
+  mctx.save();
+  mctx.translate(mc.width, 0); mctx.scale(-1, 1);
+  mctx.drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, mc.width, mc.height);
+  mctx.restore();
+  const img = mctx.getImageData(0, 0, mc.width, mc.height).data;
+  if (prevFrame) {
+    motionGrid.fill(0);
+    let total = 0;
+    const cellW = mc.width / GX, cellH = mc.height / GY;
+    for (let y = 0; y < mc.height; y++) {
+      for (let x = 0; x < mc.width; x++) {
+        const i = (y * mc.width + x) * 4;
+        const d = Math.abs(img[i]-prevFrame[i]) + Math.abs(img[i+1]-prevFrame[i+1]) + Math.abs(img[i+2]-prevFrame[i+2]);
+        if (d > 90) {
+          const gx = Math.min(GX-1, x / cellW | 0), gy = Math.min(GY-1, y / cellH | 0);
+          motionGrid[gy * GX + gx]++;
+          total++;
+        }
+      }
+    }
+    const cellPix = cellW * cellH;
+    for (let i = 0; i < motionGrid.length; i++) motionGrid[i] /= cellPix;
+    globalMotion = total / (mc.width * mc.height);
+  }
+  prevFrame = new Uint8ClampedArray(img);
+}
+function motionAt(px, py, r) {
+  /* 화면 좌표(px,py) 주변 반경 r픽셀의 모션 합 */
+  const gx0 = Math.max(0, ((px - r) / W * GX) | 0), gx1 = Math.min(GX-1, ((px + r) / W * GX) | 0);
+  const gy0 = Math.max(0, ((py - r) / H * GY) | 0), gy1 = Math.min(GY-1, ((py + r) / H * GY) | 0);
+  let m = 0;
+  for (let gy = gy0; gy <= gy1; gy++)
+    for (let gx = gx0; gx <= gx1; gx++)
+      m = Math.max(m, motionGrid[gy * GX + gx]);
+  return m;
+}
+
+/* ================= 이펙트 ================= */
+const particles = [], floaters = [];
+function burst(x, y, color, n) {
+  for (let i=0;i<(n||14);i++) {
+    const a = Math.random()*6.28, sp = 70+Math.random()*180;
+    particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-60, life:.9, max:.9,
+      color: color || ['#FFD166','#EF476F','#06D6A0','#4D96FF','#FF9E44'][(Math.random()*5)|0], r:4+Math.random()*6 });
+  }
+}
+function floatText(x, y, text, color, size) {
+  floaters.push({ x, y, text, color:color||'#fff', size:size||34, life:1.2, max:1.2 });
+}
+function fireworks() {
+  for (let i=0;i<6;i++) setTimeout(() => burst(W*.15+Math.random()*W*.7, H*.15+Math.random()*H*.4, null, 22), i*180);
+}
+
+/* --- 스테이지 클리어 배너 (자동으로 다음 단계 진행, 폰 필요 없음) --- */
+let stageBanner = null;
+function showStage(title, sub, speech) {
+  stageBanner = { title, sub, t: 3.4 };
+  sfx.win(); fireworks();
+  say(speech || '참 잘했어요! 다음 단계로 가요!', 1.05);
+}
+function updateBanner(dt) {
+  if (stageBanner) { stageBanner.t -= dt; if (stageBanner.t <= 0) stageBanner = null; }
+}
+function drawBanner() {
+  if (!stageBanner) return;
+  const fade = Math.min(1, (3.4 - stageBanner.t) / 0.3, stageBanner.t / 0.4);
+  ctx.globalAlpha = Math.max(0, Math.min(1, fade));
+  const bw = Math.min(W*0.7, 720), bh = Math.max(120, H*0.24);
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  roundRect(W/2 - bw/2, H/2 - bh/2, bw, bh, 30); ctx.fill();
+  bigCenterText(stageBanner.title, Math.max(30, W*0.042), '#FFD166', H/2 - bh*0.16);
+  bigCenterText(stageBanner.sub, Math.max(17, W*0.022), '#fff', H/2 + bh*0.2);
+  ctx.globalAlpha = 1;
+}
+function drawStageTag(stage) {
+  ctx.font = '900 ' + Math.max(16, W*0.02) + 'px sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 6;
+  ctx.fillText('🚩 ' + stage + '단계', 74, 37);
+  ctx.shadowBlur = 0;
+}
+function updateFx(dt) {
+  for (let i=particles.length-1;i>=0;i--) {
+    const p = particles[i];
+    p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 300*dt;
+    if (p.life <= 0) particles.splice(i,1);
+  }
+  for (let i=floaters.length-1;i>=0;i--) {
+    const f = floaters[i];
+    f.life -= dt; f.y -= 40*dt;
+    if (f.life <= 0) floaters.splice(i,1);
+  }
+}
+function drawFx() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life/p.max);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.29); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of floaters) {
+    ctx.globalAlpha = Math.max(0, f.life/f.max);
+    ctx.font = '900 ' + f.size + 'px sans-serif';
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+}
+function bigCenterText(text, size, color, y) {
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 ' + size + 'px sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 14;
+  ctx.fillStyle = color || '#fff';
+  ctx.fillText(text, W/2, y == null ? H/2 : y);
+  ctx.shadowBlur = 0;
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ================= 게임 상태 머신 ================= */
+let mode = 'menu';   /* menu | mugung | balloon | color */
+const winOverlay = document.getElementById('winOverlay');
+let winShownAt = 0, waveProg = 0;
+function showWin(title, msg) {
+  sfx.win(); fireworks();
+  document.getElementById('winTitle').textContent = title;
+  document.getElementById('winMsg').textContent = msg;
+  setTimeout(() => {
+    winOverlay.classList.remove('hidden');
+    winShownAt = performance.now(); waveProg = 0;
+    setTimeout(() => say('참 잘했어요! 손을 크게 흔들면 다시 시작해요!', 1.05), 600);
+  }, 800);
+}
+/* 승리 화면에서 손 흔들어 재시작 (핸드폰 안 만져도 됨) */
+function updateWaveRestart(dt) {
+  if (winOverlay.classList.contains('hidden')) return;
+  const armed = performance.now() - winShownAt > 3000; /* 환호 동작 오인 방지 딜레이 */
+  if (armed && globalMotion > 0.035) waveProg = Math.min(1, waveProg + dt / 1.4);
+  else waveProg = Math.max(0, waveProg - dt * 0.8);
+  document.getElementById('waveFill').style.width = (waveProg * 100) + '%';
+  if (waveProg >= 1) {
+    waveProg = 0;
+    document.getElementById('waveFill').style.width = '0%';
+    document.getElementById('winAgainBtn').click();
+  }
+}
+function goMenu() {
+  mode = 'menu';
+  stageBanner = null;
+  winOverlay.classList.add('hidden');
+  document.getElementById('menuOverlay').classList.remove('hidden');
+  document.getElementById('homeBtn').style.display = 'none';
+  if (window.speechSynthesis) speechSynthesis.cancel();
+}
+document.getElementById('homeBtn').addEventListener('click', goMenu);
+document.getElementById('winHomeBtn').addEventListener('click', goMenu);
+document.getElementById('winAgainBtn').addEventListener('click', () => {
+  winOverlay.classList.add('hidden');
+  if (mode === 'mugung') mugung.start();
+  else if (mode === 'balloon') balloon.start();
+  else if (mode === 'color') colorGame.start();
+  else if (mode === 'mole') mole.start();
+  else if (mode === 'quiz') quiz.start();
+  else if (mode === 'bubble') bubble.start();
+  else if (mode === 'firefly') firefly.start();
+  else if (mode === 'rainbow') rainbow.start();
+});
+document.getElementById('retryBtn').addEventListener('click', async () => {
+  document.getElementById('camError').classList.add('hidden');
+  camReady = false;
+  const ok = await startCam();
+  if (!ok) return;
+});
+document.querySelectorAll('.menuBtn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    initAudio(); primeSpeech();
+    const ok = await startCam();
+    if (!ok) return;
+    document.getElementById('menuOverlay').classList.add('hidden');
+    document.getElementById('homeBtn').style.display = 'block';
+    document.getElementById('soundBtn').style.display = 'block';
+    stageBanner = null;
+    const g = btn.dataset.game;
+    mode = g;
+    if (g === 'mugung') mugung.start();
+    else if (g === 'balloon') balloon.start();
+    else if (g === 'color') colorGame.start();
+    else if (g === 'mole') mole.start();
+    else if (g === 'quiz') quiz.start();
+    else if (g === 'bubble') bubble.start();
+    else if (g === 'firefly') firefly.start();
+    else if (g === 'rainbow') rainbow.start();
+  });
+});
+
+/* ================= 게임 1: 무궁화 꽃이 피었습니다 ================= */
+const mugung = {
+  phase:'ready', t:0, passes:0, goal:5, caught:0, chantDur:0, baseline:0, flashT:0, safeT:0, stage:1,
+  start() {
+    this.stage = 1; this.passes = 0; this.caught = 0;
+    this.phase = 'ready'; this.t = 2.2;
+    say('무궁화 꽃이 피었습니다 게임을 시작할게요! 술래는 티비예요!', 1.05);
+  },
+  update(dt) {
+    if (stageBanner) return;
+    this.t -= dt;
+    this.flashT = Math.max(0, this.flashT - dt);
+    if (this.phase === 'ready' && this.t <= 0) this.startChant();
+    else if (this.phase === 'chant' && this.t <= 0) {
+      this.phase = 'grace'; this.t = 0.55;
+      say('딱!', 1.3); sfx.tick();
+    }
+    else if (this.phase === 'grace' && this.t <= 0) {
+      this.phase = 'watch';
+      this.t = Math.min(3.6, 2.4 + (this.stage - 1) * 0.15); /* 단계마다 버티는 시간 살짝 증가 */
+      this.baseline = Math.max(globalMotion, 0.004);
+      this.safeT = 0.25;
+    }
+    else if (this.phase === 'watch') {
+      this.safeT -= dt;
+      if (this.safeT <= 0 && globalMotion > Math.max(this.baseline * 4, 0.035)) {
+        this.phase = 'caughtPause'; this.t = 2.2;
+        this.caught++; this.flashT = 0.5;
+        sfx.buzz();
+        floatText(W/2, H*0.42, '앗! 움직였다~ 😆', '#FF5C5C', Math.max(40, W*0.05));
+        say('움직였다! 다시 도전!', 1.15);
+      } else if (this.t <= 0) {
+        this.passes++;
+        sfx.good(); burst(W/2, H*0.35, '#06D6A0', 18);
+        floatText(W/2, H*0.42, '통과! ' + this.passes + '/' + this.goal + ' 🎉', '#06D6A0', Math.max(40, W*0.05));
+        if (this.passes >= this.goal) {
+          this.stage++;
+          this.passes = 0;
+          showStage('🌸 ' + (this.stage-1) + '단계 클리어!', '술래가 조금 빨라져요! 계속 가요~');
+          this.phase = 'ready'; this.t = 0.8;
+        } else {
+          this.phase = 'passPause'; this.t = 1.6;
+          say('통과! 잘했어요!', 1.1);
+        }
+      }
+    }
+    else if ((this.phase === 'caughtPause' || this.phase === 'passPause') && this.t <= 0) this.startChant();
+  },
+  startChant() {
+    this.phase = 'chant';
+    const rate = Math.min(2.1, (0.75 + Math.random() * 0.85) * (1 + (this.stage - 1) * 0.05));
+    this.chantDur = 3.6 / rate;
+    this.t = this.chantDur;
+    say('무궁화 꽃이 피었습니다', rate);
+  },
+  draw() {
+    drawVideo();
+    /* 걸렸을 때 빨간 플래시 */
+    if (this.flashT > 0) {
+      ctx.fillStyle = 'rgba(255,60,60,' + (this.flashT * 0.7) + ')';
+      ctx.fillRect(0,0,W,H);
+    }
+    /* 상단 상태 바 */
+    const bh = Math.max(56, H*0.1);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    roundRect(W/2 - Math.min(W*0.36,400), 10, Math.min(W*0.72,800), bh, 20); ctx.fill();
+    const fsz = Math.max(20, Math.min(W*0.032, 40));
+    if (this.phase === 'chant') {
+      bigCenterText('🙈 무궁화 꽃이 피었습니다~', fsz, '#7CFFB2', 10 + bh/2);
+      bigCenterText('지금 움직이세요!', Math.max(16, fsz*0.6), 'rgba(255,255,255,.85)', 10 + bh + 26);
+    } else if (this.phase === 'grace') {
+      bigCenterText('👀 딱 !', fsz*1.2, '#FFD166', 10 + bh/2);
+    } else if (this.phase === 'watch') {
+      bigCenterText('👀 꼼짝 마! (' + Math.ceil(this.t) + ')', fsz, '#FF8FA3', 10 + bh/2);
+      /* 움직임 게이지 */
+      const gw = Math.min(W*0.5, 500), gx = W/2 - gw/2, gy = 10 + bh + 14;
+      ctx.fillStyle = 'rgba(255,255,255,.3)';
+      roundRect(gx, gy, gw, 16, 8); ctx.fill();
+      const lvl = Math.min(1, globalMotion / Math.max(this.baseline * 4, 0.035));
+      ctx.fillStyle = lvl > 0.85 ? '#FF5C5C' : lvl > 0.5 ? '#FFD166' : '#06D6A0';
+      roundRect(gx, gy, Math.max(10, gw * lvl), 16, 8); ctx.fill();
+    } else if (this.phase === 'ready') {
+      bigCenterText('🌸 준비하세요!', fsz, '#fff', 10 + bh/2);
+    } else if (this.phase === 'caughtPause') {
+      bigCenterText('😆 걸렸다! 다시 가요~', fsz, '#FF8FA3', 10 + bh/2);
+    } else if (this.phase === 'passPause') {
+      bigCenterText('🎉 통과!', fsz, '#7CFFB2', 10 + bh/2);
+    }
+    /* 진행 꽃 표시 */
+    ctx.font = Math.max(22, W*0.026) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    let flowers = '';
+    for (let i=0;i<this.goal;i++) flowers += i < this.passes ? '🌸' : '🥀';
+    ctx.fillText(flowers, 16, H - Math.max(28, H*0.045));
+    drawStageTag(this.stage);
+  }
+};
+
+/* ================= 게임 2: 몸으로 풍선 터뜨리기 ================= */
+const balloon = {
+  list:[], score:0, goal:15, spawnT:0, startPause:0, stage:1,
+  colors:['#FF5C7C','#FFB84D','#FFE94D','#5CE87C','#5CB8FF','#C77CFF'],
+  diff() { return 1 + (this.stage - 1) * 0.07; }, /* 단계당 7%씩 아주 살짝 */
+  roundStart() {
+    this.list = []; this.score = 0;
+    this.goal = 12 + (this.stage - 1) * 3; /* 단계마다 목표 +3 → 지속시간 증가 */
+    this.spawnT = 0.5; this.startPause = 0.6;
+  },
+  start() {
+    this.stage = 1; this.roundStart(); this.startPause = 2.5;
+    say('풍선을 손으로 휘저어서 터뜨려요!', 1.05);
+  },
+  update(dt) {
+    if (stageBanner) return;
+    if (this.startPause > 0) { this.startPause -= dt; return; }
+    this.spawnT -= dt;
+    if (this.spawnT <= 0 && this.list.length < 7 + Math.min(3, this.stage - 1)) {
+      const r = Math.max(42, Math.min(W,H)*0.075);
+      this.list.push({
+        x: r + Math.random()*(W - r*2),
+        y: H + r*2,
+        r, v: (55 + Math.random()*50) * this.diff(),
+        color: this.colors[(Math.random()*this.colors.length)|0],
+        wob: Math.random()*6.28, born: 0
+      });
+      this.spawnT = (1.0 + Math.random()*0.6) / this.diff();
+    }
+    for (let i=this.list.length-1;i>=0;i--) {
+      const b = this.list[i];
+      b.y -= b.v*dt; b.wob += dt*2.4; b.born += dt;
+      /* 모션으로 터뜨리기 (등장 후 0.5초 보호) */
+      if (b.born > 0.5 && motionAt(b.x, b.y, b.r*1.15) > 0.18) {
+        this.list.splice(i,1);
+        this.score++;
+        sfx.pop(); burst(b.x, b.y, b.color, 16);
+        floatText(b.x, b.y - 20, 'PEONG! +1', '#fff', Math.max(26, W*0.03));
+        if (this.score >= this.goal) {
+          this.stage++;
+          showStage('🎈 ' + (this.stage-1) + '단계 클리어!', '풍선이 조금 빨라져요! 계속 가요~');
+          this.roundStart();
+        }
+        continue;
+      }
+      if (b.y < -b.r*2) { this.list.splice(i,1); }
+    }
+  },
+  draw() {
+    drawVideo();
+    for (const b of this.list) {
+      const x = b.x + Math.sin(b.wob)*10;
+      ctx.save();
+      /* 줄 */
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, b.y + b.r*0.95);
+      ctx.quadraticCurveTo(x + 6, b.y + b.r*1.6, x - 4, b.y + b.r*2.1); ctx.stroke();
+      /* 몸통 */
+      const g = ctx.createRadialGradient(x - b.r*0.3, b.y - b.r*0.35, b.r*0.15, x, b.y, b.r);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, b.color); g.addColorStop(1, b.color);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(x, b.y, b.r*0.82, b.r, 0, 0, 6.29); ctx.fill();
+      /* 매듭 */
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.moveTo(x, b.y + b.r*0.9);
+      ctx.lineTo(x - 8, b.y + b.r*1.08); ctx.lineTo(x + 8, b.y + b.r*1.08);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    /* 점수판 */
+    const bh = Math.max(48, H*0.085);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    roundRect(W/2 - 130, 10, 260, bh, 18); ctx.fill();
+    bigCenterText('🎈 ' + this.score + ' / ' + this.goal, Math.max(22, W*0.03), '#fff', 10 + bh/2);
+    drawStageTag(this.stage);
+    if (!stageBanner && this.startPause > 0 && this.startPause < 100)
+      bigCenterText('손을 휘저어 풍선을 터뜨려요! 🙌', Math.max(24, W*0.036), '#FFD166', H*0.45);
+  }
+};
+
+/* 화면 좌표 원 안의 픽셀 중 색상 조건(testFn) 일치 비율 */
+function hsvMatchRatio(testFn, sx, sy, sr) {
+  if (!prevFrame) return 0;
+  const cx = sx / W * mc.width, cy = sy / H * mc.height, cr = sr / W * mc.width;
+  const img = prevFrame;
+  let hit = 0, tot = 0;
+  for (let y = Math.max(0, cy - cr | 0); y < Math.min(mc.height, cy + cr); y++) {
+    for (let x = Math.max(0, cx - cr | 0); x < Math.min(mc.width, cx + cr); x++) {
+      if ((x-cx)*(x-cx) + (y-cy)*(y-cy) > cr*cr) continue;
+      const i = ((y|0) * mc.width + (x|0)) * 4;
+      const r = img[i]/255, g = img[i+1]/255, b = img[i+2]/255;
+      const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx - mn;
+      let h = 0;
+      if (d > 0) {
+        if (mx === r) h = 60 * (((g - b) / d) % 6);
+        else if (mx === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+      const s = mx === 0 ? 0 : d / mx, v = mx;
+      tot++;
+      if (testFn(h, s, v)) hit++;
+    }
+  }
+  return tot ? hit / tot : 0;
+}
+
+/* ================= 게임 3: 색깔 보물찾기 ================= */
+const colorGame = {
+  missions: [
+    { name:'빨간색', emoji:'🍎', css:'#FF3B30', test:(h,s,v) => (h < 16 || h > 344) && s > 0.42 && v > 0.22 },
+    { name:'노란색', emoji:'🍌', css:'#FFD60A', test:(h,s,v) => h >= 42 && h <= 70 && s > 0.4 && v > 0.42 },
+    { name:'초록색', emoji:'🥦', css:'#34C759', test:(h,s,v) => h >= 75 && h <= 165 && s > 0.32 && v > 0.16 },
+    { name:'파란색', emoji:'🐳', css:'#0A84FF', test:(h,s,v) => h >= 185 && h <= 255 && s > 0.35 && v > 0.2 },
+    { name:'주황색', emoji:'🍊', css:'#FF9500', test:(h,s,v) => h >= 16 && h <= 42 && s > 0.45 && v > 0.35 }
+  ],
+  order:[], idx:0, progress:0, done:0, msgT:0, celebrating:0, stage:1, count:3,
+  roundStart() {
+    this.count = Math.min(5, 2 + this.stage); /* 1단계 3색 → 단계마다 +1색 (최대 5색) */
+    this.order = [...this.missions].sort(() => Math.random() - 0.5).slice(0, this.count);
+    this.idx = 0; this.progress = 0;
+  },
+  start() {
+    this.stage = 1; this.done = 0; this.celebrating = 0;
+    this.roundStart();
+    this.announce();
+  },
+  announce() {
+    const m = this.order[this.idx];
+    const text = m.name + ' 물건을 찾아서 카메라 동그라미에 비춰 주세요!';
+    if (stageBanner) setTimeout(() => say(text, 1.0), 3600);
+    else say(text, 1.0);
+  },
+  circle() {
+    const r = Math.min(W, H) * 0.17;
+    return { x: W/2, y: H*0.55, r };
+  },
+  matchRatio() {
+    const c = this.circle();
+    return hsvMatchRatio(this.order[this.idx].test, c.x, c.y, c.r);
+  },
+  update(dt) {
+    if (stageBanner) return;
+    if (this.celebrating > 0) {
+      this.celebrating -= dt;
+      if (this.celebrating <= 0) {
+        this.idx++;
+        this.progress = 0;
+        if (this.idx >= this.count) {
+          this.stage++;
+          showStage('🔍 ' + (this.stage-1) + '단계 클리어!', '이번엔 색깔이 하나 더 늘어나요!');
+          this.roundStart();
+        }
+        this.announce();
+      }
+      return;
+    }
+    this.msgT += dt;
+    const ratio = this.matchRatio();
+    if (ratio > 0.3) {
+      this.progress = Math.min(1, this.progress + dt * 1.1);
+      if (this.progress >= 1) {
+        this.done++;
+        this.celebrating = 2.0;
+        const c = this.circle();
+        sfx.camera(); sfx.good();
+        burst(c.x, c.y, this.order[this.idx].css, 24);
+        floatText(c.x, c.y - c.r - 30, '찾았다! ' + this.order[this.idx].emoji, '#fff', Math.max(34, W*0.045));
+        say('찾았다! 잘했어요!', 1.1);
+      }
+    } else {
+      this.progress = Math.max(0, this.progress - dt * 1.6);
+    }
+  },
+  draw() {
+    drawVideo();
+    if (this.idx >= this.count) return;
+    const m = this.order[this.idx];
+    const c = this.circle();
+    /* 미션 안내판 */
+    const bh = Math.max(62, H*0.12);
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    roundRect(W/2 - Math.min(W*0.4,420), 10, Math.min(W*0.8,840), bh, 22); ctx.fill();
+    const fsz = Math.max(20, Math.min(W*0.032, 38));
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 ' + fsz + 'px sans-serif';
+    const seg1 = m.emoji + ' ', seg2 = m.name, seg3 = ' 찾아오기!';
+    const w1 = ctx.measureText(seg1).width, w2 = ctx.measureText(seg2).width, w3 = ctx.measureText(seg3).width;
+    let tx = W/2 - (w1 + w2 + w3)/2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(seg1, tx, 10 + bh/2); tx += w1;
+    ctx.fillStyle = m.css;
+    ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 3;
+    ctx.fillText(seg2, tx, 10 + bh/2); tx += w2;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(seg3, tx, 10 + bh/2);
+    ctx.textAlign = 'center';
+    /* 타겟 원 */
+    ctx.save();
+    ctx.lineWidth = Math.max(6, c.r*0.09);
+    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.setLineDash([14, 12]);
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, 6.29); ctx.stroke();
+    ctx.setLineDash([]);
+    /* 진행 링 */
+    if (this.progress > 0) {
+      ctx.strokeStyle = m.css;
+      ctx.lineWidth = Math.max(9, c.r*0.13);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, -Math.PI/2, -Math.PI/2 + this.progress * 6.283);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (this.celebrating > 0) {
+      bigCenterText('🎉 찾았다 !', Math.max(34, W*0.05), '#FFD166', c.y);
+    } else if (this.progress === 0 && (this.msgT % 4) < 2.4) {
+      bigCenterText('동그라미에 물건을 비춰요 ⬇️', Math.max(16, W*0.02), 'rgba(255,255,255,.9)', c.y - c.r - 28);
+    }
+    /* 진행 표시 */
+    ctx.font = Math.max(22, W*0.026) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    let stars = '';
+    for (let i=0;i<this.count;i++) stars += i < this.idx ? '⭐' : '☆';
+    ctx.fillText(stars, 16, H - Math.max(28, H*0.045));
+    drawStageTag(this.stage);
+  }
+};
+
+/* ================= 게임 4: 두더지 잡기 ================= */
+const mole = {
+  active:[], score:0, goal:12, spawnT:1, startPause:0, stage:1,
+  holes() {
+    const r = Math.min(W, H) * 0.1;
+    const cols = [0.18, 0.5, 0.82], rows = [0.5, 0.78];
+    const hs = [];
+    for (const ry of rows) for (const cx of cols) hs.push({ x: cx*W, y: ry*H, r });
+    return hs;
+  },
+  roundStart() {
+    this.active = []; this.score = 0;
+    this.goal = 10 + (this.stage - 1) * 2;
+    this.spawnT = 1.0; this.startPause = 0.6;
+  },
+  start() {
+    this.stage = 1; this.roundStart(); this.startPause = 2.5;
+    say('구멍에서 나오는 두더지를 손으로 잡아요!', 1.05);
+  },
+  update(dt) {
+    if (stageBanner) return;
+    if (this.startPause > 0) { this.startPause -= dt; return; }
+    this.spawnT -= dt;
+    const holes = this.holes();
+    if (this.spawnT <= 0 && this.active.length < 3) {
+      const used = this.active.map(m => m.hi);
+      const free = holes.map((h,i)=>i).filter(i => !used.includes(i));
+      if (free.length) {
+        const hi = free[(Math.random()*free.length)|0];
+        /* 단계마다 두더지가 아주 조금씩 빨리 숨어요 */
+        this.active.push({ hi, t: Math.max(1.2, 2.4 - (this.stage-1)*0.12 - this.score*0.02), born:0 });
+      }
+      this.spawnT = Math.max(0.5, (0.9 + Math.random()*0.7) - (this.stage-1)*0.05);
+    }
+    for (let i=this.active.length-1;i>=0;i--) {
+      const m = this.active[i];
+      m.t -= dt; m.born += dt;
+      const h = holes[m.hi];
+      if (m.born > 0.45 && motionAt(h.x, h.y - h.r*0.5, h.r*1.1) > 0.2) {
+        this.active.splice(i,1);
+        this.score++;
+        sfx.pop(); burst(h.x, h.y - h.r*0.5, '#B08968', 14);
+        floatText(h.x, h.y - h.r*1.4, '잡았다! +1', '#fff', Math.max(26, W*0.03));
+        if (this.score >= this.goal) {
+          this.stage++;
+          showStage('🐹 ' + (this.stage-1) + '단계 클리어!', '두더지가 조금 빨라져요! 계속 가요~');
+          this.roundStart();
+        }
+        continue;
+      }
+      if (m.t <= 0) this.active.splice(i,1); /* 도망감 */
+    }
+  },
+  draw() {
+    drawVideo();
+    const holes = this.holes();
+    /* 구멍 */
+    for (const h of holes) {
+      ctx.fillStyle = 'rgba(60,35,20,.75)';
+      ctx.beginPath(); ctx.ellipse(h.x, h.y + h.r*0.35, h.r*0.95, h.r*0.4, 0, 0, 6.29); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y + h.r*0.35, h.r*0.95, h.r*0.4, 0, 0, 6.29); ctx.stroke();
+    }
+    /* 두더지 */
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const m of this.active) {
+      const h = holes[m.hi];
+      const up = Math.min(1, m.born / 0.3); /* 쏙 올라오는 애니메이션 */
+      const wig = Math.sin(m.born * 10) * 3;
+      ctx.save();
+      ctx.beginPath(); /* 구멍 아래는 안 보이게 클리핑 */
+      ctx.rect(h.x - h.r*1.3, h.y + h.r*0.4 - h.r*3, h.r*2.6, h.r*3);
+      ctx.clip();
+      ctx.font = (h.r*1.5) + 'px sans-serif';
+      ctx.fillText('🐹', h.x + wig, h.y + h.r*0.3 - up * h.r*1.05);
+      ctx.restore();
+      /* 도망가기 직전 경고 */
+      if (m.t < 0.6) {
+        ctx.font = (h.r*0.5) + 'px sans-serif';
+        ctx.fillText('💨', h.x + h.r*0.9, h.y - h.r*0.8);
+      }
+    }
+    /* 점수판 */
+    const bh = Math.max(48, H*0.085);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    roundRect(W/2 - 130, 10, 260, bh, 18); ctx.fill();
+    bigCenterText('🐹 ' + this.score + ' / ' + this.goal, Math.max(22, W*0.03), '#fff', 10 + bh/2);
+    drawStageTag(this.stage);
+    if (!stageBanner && this.startPause > 0 && this.startPause < 100)
+      bigCenterText('두더지가 나오면 손으로 팡! 🙌', Math.max(24, W*0.036), '#FFD166', H*0.3);
+  }
+};
+
+/* ================= 게임 5: 왼쪽? 오른쪽? 퀴즈 ================= */
+const quiz = {
+  EMO: ['🍎','🐶','⭐','🎈','🚗','🐟','🌼','🍪'],
+  q:null, stars:0, goal:5, selL:0, selR:0, celebrating:0, wrongT:0, stage:1,
+  start() {
+    this.stage = 1; this.stars = 0; this.celebrating = 0; this.wrongT = 0;
+    this.next();
+  },
+  announce(text) {
+    /* 스테이지 배너 음성과 겹치지 않게 지연 */
+    if (stageBanner) setTimeout(() => say(text, 1.0), 3600);
+    else say(text, 1.0);
+  },
+  next() {
+    this.selL = 0; this.selR = 0;
+    const maxN = Math.min(9, 4 + this.stage); /* 단계마다 숫자가 조금씩 커져요 */
+    const emoji = this.EMO[(Math.random()*this.EMO.length)|0];
+    if (Math.random() < 0.55) {
+      /* 몇 개일까요? */
+      const n = 2 + (Math.random()*(maxN-1)|0);
+      let wrong = n + (Math.random() < 0.5 ? -1 : 1);
+      if (wrong < 1) wrong = n + 1;
+      const correctSide = Math.random() < 0.5 ? 'L' : 'R';
+      this.q = { type:'count', emoji, n,
+        ansL: correctSide==='L' ? n : wrong,
+        ansR: correctSide==='R' ? n : wrong,
+        correct: correctSide };
+      this.announce('몇 개일까요? 정답 쪽에서 손을 흔들어요!');
+    } else {
+      /* 어느 쪽이 더 많아? */
+      let a = 1 + (Math.random()*maxN|0), b = 1 + (Math.random()*maxN|0);
+      while (a === b) b = 1 + (Math.random()*maxN|0);
+      const emoji2 = this.EMO[(Math.random()*this.EMO.length)|0];
+      this.q = { type:'more', emoji, emoji2, nL:a, nR:b, correct: a > b ? 'L' : 'R' };
+      this.announce('어느 쪽이 더 많을까요? 많은 쪽에서 손을 흔들어요!');
+    }
+  },
+  zone(side) {
+    const r = Math.min(W, H) * 0.16;
+    return { x: side==='L' ? W*0.22 : W*0.78, y: H*0.76, r };
+  },
+  update(dt) {
+    if (stageBanner) return;
+    if (this.celebrating > 0) {
+      this.celebrating -= dt;
+      if (this.celebrating <= 0) {
+        if (this.stars >= this.goal) {
+          this.stage++;
+          this.stars = 0;
+          showStage('🧠 ' + (this.stage-1) + '단계 클리어!', '숫자가 조금 커져요! 계속 가요~');
+        }
+        this.next();
+      }
+      return;
+    }
+    this.wrongT = Math.max(0, this.wrongT - dt);
+    if (this.wrongT > 0) return;
+    const zL = this.zone('L'), zR = this.zone('R');
+    const mL = motionAt(zL.x, zL.y, zL.r), mR = motionAt(zR.x, zR.y, zR.r);
+    this.selL = mL > 0.15 ? Math.min(1, this.selL + dt/1.1) : Math.max(0, this.selL - dt*1.5);
+    this.selR = mR > 0.15 ? Math.min(1, this.selR + dt/1.1) : Math.max(0, this.selR - dt*1.5);
+    const picked = this.selL >= 1 ? 'L' : this.selR >= 1 ? 'R' : null;
+    if (picked) {
+      if (picked === this.q.correct) {
+        this.stars++;
+        sfx.good();
+        const z = this.zone(picked);
+        burst(z.x, z.y, '#06D6A0', 20);
+        floatText(W/2, H*0.4, '딩동댕~ 정답! 🎉', '#7CFFB2', Math.max(36, W*0.045));
+        say('딩동댕! 정답이에요!', 1.1);
+        this.celebrating = 2.0;
+      } else {
+        sfx.buzz();
+        floatText(W/2, H*0.4, '음~ 다시 한 번! 🤔', '#FFB84D', Math.max(32, W*0.04));
+        say('땡! 다시 한 번 생각해 봐요!', 1.05);
+        this.wrongT = 1.6;
+        this.selL = 0; this.selR = 0;
+      }
+    }
+  },
+  draw() {
+    drawVideo(0.85);
+    if (!this.q) return;
+    const fsz = Math.max(20, Math.min(W*0.03, 36));
+    /* 문제판 */
+    const bw = Math.min(W*0.86, 900), bh2 = H*0.3;
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    roundRect(W/2 - bw/2, 12, bw, bh2, 26); ctx.fill();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (this.q.type === 'count') {
+      bigCenterText('몇 개일까요?', fsz, '#FFD166', 12 + bh2*0.2);
+      ctx.font = Math.min(bw/(this.q.n+1), bh2*0.42) + 'px sans-serif';
+      let str = '';
+      for (let i=0;i<this.q.n;i++) str += this.q.emoji;
+      ctx.fillText(str, W/2, 12 + bh2*0.62);
+    } else {
+      bigCenterText('어느 쪽이 더 많을까요?', fsz, '#FFD166', 12 + bh2*0.18);
+      const half = bw/2 - 30;
+      ctx.font = Math.min(half/(Math.max(this.q.nL,this.q.nR)), bh2*0.34) + 'px sans-serif';
+      let sL = '', sR = '';
+      for (let i=0;i<this.q.nL;i++) sL += this.q.emoji;
+      for (let i=0;i<this.q.nR;i++) sR += this.q.emoji2;
+      ctx.fillText(sL, W/2 - bw/4, 12 + bh2*0.6);
+      ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(W/2, 12 + bh2*0.35); ctx.lineTo(W/2, 12 + bh2*0.88); ctx.stroke();
+      ctx.fillText(sR, W/2 + bw/4, 12 + bh2*0.6);
+    }
+    /* 답 카드 + 진행 링 */
+    for (const side of ['L','R']) {
+      const z = this.zone(side);
+      const sel = side==='L' ? this.selL : this.selR;
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r*0.78, 0, 6.29); ctx.fill();
+      ctx.font = '900 ' + (z.r*0.62) + 'px sans-serif';
+      ctx.fillStyle = '#333';
+      if (this.q.type === 'count') ctx.fillText(side==='L' ? this.q.ansL : this.q.ansR, z.x, z.y + 2);
+      else ctx.fillText(side==='L' ? '⬅️' : '➡️', z.x, z.y + 2);
+      ctx.strokeStyle = 'rgba(255,255,255,.7)';
+      ctx.lineWidth = Math.max(7, z.r*0.1); ctx.setLineDash([10,10]);
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r*0.92, 0, 6.29); ctx.stroke();
+      ctx.setLineDash([]);
+      if (sel > 0) {
+        ctx.strokeStyle = '#FF9E44'; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.r*0.92, -Math.PI/2, -Math.PI/2 + sel*6.283); ctx.stroke();
+      }
+    }
+    bigCenterText('정답 쪽 동그라미에서 손을 흔들어요 🙌', Math.max(14, W*0.017), 'rgba(255,255,255,.9)', H*0.55);
+    /* 별 진행 */
+    ctx.font = Math.max(22, W*0.026) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    let stars = '';
+    for (let i=0;i<this.goal;i++) stars += i < this.stars ? '⭐' : '☆';
+    ctx.fillText(stars, 16, H - Math.max(28, H*0.045));
+    drawStageTag(this.stage);
+  }
+};
+
+/* ================= 게임 6: 비눗방울 팡팡 ================= */
+const bubble = {
+  list:[], score:0, goal:15, spawnT:0, startPause:0, stage:1,
+  diff() { return 1 + (this.stage - 1) * 0.06; },
+  roundStart() {
+    this.list = []; this.score = 0;
+    this.goal = 12 + (this.stage - 1) * 3;
+    this.spawnT = 0.4; this.startPause = 0.6;
+  },
+  start() {
+    this.stage = 1; this.roundStart(); this.startPause = 2.5;
+    say('비눗방울을 손으로 톡톡 터뜨려요! 황금방울은 3점이에요!', 1.05);
+  },
+  update(dt) {
+    if (stageBanner) return;
+    if (this.startPause > 0) { this.startPause -= dt; return; }
+    this.spawnT -= dt;
+    if (this.spawnT <= 0 && this.list.length < 9 + Math.min(4, this.stage - 1)) {
+      const r = Math.max(34, Math.min(W,H)*0.06) * (0.75 + Math.random()*0.7);
+      const golden = Math.random() < 0.14;
+      this.list.push({
+        x: r + Math.random()*(W - r*2),
+        y: H + r*2,
+        r: golden ? r*1.15 : r,
+        vy: -(30 + Math.random()*35) * this.diff(),
+        vx: (Math.random()-0.5)*40 * this.diff(),
+        wob: Math.random()*6.28, born:0, golden,
+        hue: 180 + Math.random()*120
+      });
+      this.spawnT = (0.55 + Math.random()*0.5) / this.diff();
+    }
+    for (let i=this.list.length-1;i>=0;i--) {
+      const b = this.list[i];
+      b.wob += dt*1.8; b.born += dt;
+      b.x += (b.vx + Math.sin(b.wob)*26) * dt;
+      b.y += b.vy * dt;
+      if (b.x < b.r) b.vx = Math.abs(b.vx);
+      if (b.x > W - b.r) b.vx = -Math.abs(b.vx);
+      if (b.born > 0.5 && motionAt(b.x, b.y, b.r*1.2) > 0.16) {
+        this.list.splice(i,1);
+        const pts = b.golden ? 3 : 1;
+        this.score += pts;
+        sfx.pop();
+        if (b.golden) sfx.good();
+        /* 물방울 튀는 이펙트 */
+        for (let k=0;k<12;k++) {
+          const a = Math.random()*6.28, sp = 50+Math.random()*140;
+          particles.push({ x:b.x, y:b.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:.7, max:.7,
+            color: b.golden ? '#FFD166' : 'rgba(180,230,255,.9)', r:3+Math.random()*4 });
+        }
+        floatText(b.x, b.y - 20, b.golden ? '✨ +3' : '팡! +1', b.golden ? '#FFD166' : '#fff', Math.max(26, W*0.03));
+        if (this.score >= this.goal) {
+          this.stage++;
+          showStage('🫧 ' + (this.stage-1) + '단계 클리어!', '방울이 조금 더 많아져요! 계속 가요~');
+          this.roundStart();
+        }
+        continue;
+      }
+      if (b.y < -b.r*2) this.list.splice(i,1);
+    }
+  },
+  draw() {
+    drawVideo();
+    for (const b of this.list) {
+      ctx.save();
+      /* 방울 몸통 */
+      const g = ctx.createRadialGradient(b.x - b.r*0.35, b.y - b.r*0.35, b.r*0.1, b.x, b.y, b.r);
+      if (b.golden) {
+        g.addColorStop(0, 'rgba(255,255,220,.95)');
+        g.addColorStop(0.6, 'rgba(255,209,102,.55)');
+        g.addColorStop(1, 'rgba(255,170,40,.75)');
+      } else {
+        g.addColorStop(0, 'rgba(255,255,255,.75)');
+        g.addColorStop(0.65, 'hsla(' + b.hue + ',80%,75%,.22)');
+        g.addColorStop(1, 'hsla(' + b.hue + ',85%,65%,.5)');
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
+      /* 테두리 + 하이라이트 */
+      ctx.strokeStyle = b.golden ? 'rgba(255,220,120,.95)' : 'rgba(255,255,255,.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.ellipse(b.x - b.r*0.4, b.y - b.r*0.45, b.r*0.18, b.r*0.1, -0.7, 0, 6.29); ctx.fill();
+      if (b.golden) {
+        ctx.font = (b.r*0.8) + 'px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('⭐', b.x, b.y);
+      }
+      ctx.restore();
+    }
+    const bh = Math.max(48, H*0.085);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    roundRect(W/2 - 130, 10, 260, bh, 18); ctx.fill();
+    bigCenterText('🫧 ' + this.score + ' / ' + this.goal, Math.max(22, W*0.03), '#fff', 10 + bh/2);
+    drawStageTag(this.stage);
+    if (!stageBanner && this.startPause > 0 && this.startPause < 100)
+      bigCenterText('방울을 손으로 톡톡! 🫧', Math.max(24, W*0.036), '#B8E8FF', H*0.45);
+  }
+};
+
+/* ================= 게임 7: 반딧불이 잡기 ================= */
+const firefly = {
+  list:[], score:0, goal:10, spawnT:0, startPause:0, stars:[], stage:1,
+  diff() { return 1 + (this.stage - 1) * 0.06; },
+  roundStart() {
+    this.list = []; this.score = 0;
+    this.goal = 8 + (this.stage - 1) * 2;
+    this.spawnT = 0.3; this.startPause = 0.6;
+  },
+  start() {
+    this.stage = 1; this.roundStart(); this.startPause = 2.5;
+    this.stars = [];
+    for (let i=0;i<40;i++) this.stars.push({ x:Math.random()*W, y:Math.random()*H*0.5, tw:Math.random()*6.28 });
+    say('깜깜한 밤이에요! 반짝이는 반딧불이를 살짝 잡아서 병에 모아요!', 1.05);
+  },
+  update(dt) {
+    for (const s of this.stars) s.tw += dt*2;
+    if (stageBanner) return;
+    if (this.startPause > 0) { this.startPause -= dt; return; }
+    this.spawnT -= dt;
+    if (this.spawnT <= 0 && this.list.length < 6 + Math.min(3, this.stage - 1)) {
+      this.list.push({
+        x: Math.random()*W, y: H*0.25 + Math.random()*H*0.65,
+        a: Math.random()*6.28, turn:0, sp: (60 + Math.random()*50) * this.diff(),
+        glow: Math.random()*6.28, born:0
+      });
+      this.spawnT = (0.8 + Math.random()*0.8) / this.diff();
+    }
+    for (let i=this.list.length-1;i>=0;i--) {
+      const f = this.list[i];
+      f.born += dt; f.glow += dt*4;
+      /* 랜덤 워크 */
+      f.turn += (Math.random()-0.5)*3*dt;
+      f.turn = Math.max(-1.5, Math.min(1.5, f.turn));
+      f.a += f.turn*dt*2;
+      f.x += Math.cos(f.a)*f.sp*dt;
+      f.y += Math.sin(f.a)*f.sp*dt;
+      if (f.x < 20 || f.x > W-20) f.a = Math.PI - f.a;
+      if (f.y < H*0.15) f.a = -f.a;
+      if (f.y > H-20) f.a = -f.a;
+      f.x = Math.max(10, Math.min(W-10, f.x));
+      f.y = Math.max(H*0.12, Math.min(H-10, f.y));
+      if (f.born > 0.6 && motionAt(f.x, f.y, Math.min(W,H)*0.09) > 0.15) {
+        this.list.splice(i,1);
+        this.score++;
+        sfx.good();
+        burst(f.x, f.y, '#D9F99D', 16);
+        floatText(f.x, f.y - 24, '반짝! +1', '#F5FFB8', Math.max(26, W*0.03));
+        if (this.score >= this.goal) {
+          this.stage++;
+          showStage('✨ ' + (this.stage-1) + '단계 클리어!', '반딧불이가 조금 빨라져요! 계속 가요~');
+          this.roundStart();
+        }
+      }
+    }
+  },
+  draw() {
+    /* 밤하늘 */
+    ctx.fillStyle = '#0a0a1e'; ctx.fillRect(0,0,W,H);
+    drawVideo(0.38); /* 어둡게 */
+    ctx.fillStyle = 'rgba(10,10,40,.35)'; ctx.fillRect(0,0,W,H);
+    /* 별 */
+    for (const s of this.stars) {
+      ctx.globalAlpha = 0.4 + Math.sin(s.tw)*0.35;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, 1.6, 0, 6.29); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    /* 달 */
+    ctx.font = Math.max(40, W*0.05) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🌙', W - Math.max(50, W*0.06), Math.max(90, H*0.16));
+    /* 반딧불이 */
+    for (const f of this.list) {
+      const gl = 0.55 + Math.sin(f.glow)*0.45;
+      const g = ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, 34);
+      g.addColorStop(0, 'rgba(240,255,150,' + (0.9*gl) + ')');
+      g.addColorStop(0.4, 'rgba(200,255,120,' + (0.4*gl) + ')');
+      g.addColorStop(1, 'rgba(180,255,100,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(f.x, f.y, 34, 0, 6.29); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,200,' + Math.max(0.5, gl) + ')';
+      ctx.beginPath(); ctx.arc(f.x, f.y, 5, 0, 6.29); ctx.fill();
+    }
+    /* 병 게이지 */
+    const bh = Math.max(48, H*0.085);
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    roundRect(W/2 - 130, 10, 260, bh, 18); ctx.fill();
+    bigCenterText('🫙 ' + this.score + ' / ' + this.goal, Math.max(22, W*0.03), '#F5FFB8', 10 + bh/2);
+    drawStageTag(this.stage);
+    if (!stageBanner && this.startPause > 0 && this.startPause < 100)
+      bigCenterText('반딧불이를 손으로 살짝! ✨', Math.max(24, W*0.036), '#F5FFB8', H*0.45);
+  }
+};
+
+/* ================= 게임 8: 무지개 만들기 ================= */
+const rainbow = {
+  steps: [
+    { name:'빨간색', css:'#FF3B30', test:(h,s,v) => (h < 16 || h > 344) && s > 0.42 && v > 0.22 },
+    { name:'주황색', css:'#FF9500', test:(h,s,v) => h >= 16 && h <= 42 && s > 0.45 && v > 0.35 },
+    { name:'노란색', css:'#FFD60A', test:(h,s,v) => h >= 42 && h <= 70 && s > 0.4 && v > 0.42 },
+    { name:'초록색', css:'#34C759', test:(h,s,v) => h >= 75 && h <= 165 && s > 0.32 && v > 0.16 },
+    { name:'파란색', css:'#0A84FF', test:(h,s,v) => h >= 185 && h <= 255 && s > 0.35 && v > 0.2 }
+  ],
+  idx:0, progress:0, celebrating:0, doneAll:false,
+  start() {
+    this.idx = 0; this.progress = 0; this.celebrating = 0; this.doneAll = false;
+    say('무지개를 만들어 봐요! 먼저 빨간색 물건을 찾아오세요!', 1.0);
+  },
+  circle() {
+    const r = Math.min(W, H) * 0.16;
+    return { x: W/2, y: H*0.62, r };
+  },
+  update(dt) {
+    if (this.doneAll) return;
+    if (this.celebrating > 0) {
+      this.celebrating -= dt;
+      if (this.celebrating <= 0) {
+        this.idx++;
+        this.progress = 0;
+        if (this.idx >= this.steps.length) {
+          this.doneAll = true;
+          say('우와! 무지개가 완성됐어요!', 1.05);
+          showWin('무지개 완성! 🌈', '다섯 색깔을 모두 찾아서 무지개를 만들었어요!');
+        } else {
+          say('이번엔 ' + this.steps[this.idx].name + ' 물건을 찾아오세요!', 1.0);
+        }
+      }
+      return;
+    }
+    const c = this.circle();
+    const ratio = hsvMatchRatio(this.steps[this.idx].test, c.x, c.y, c.r);
+    if (ratio > 0.3) {
+      this.progress = Math.min(1, this.progress + dt * 1.1);
+      if (this.progress >= 1) {
+        this.celebrating = 1.8;
+        sfx.camera(); sfx.good();
+        burst(c.x, c.y, this.steps[this.idx].css, 24);
+        floatText(c.x, c.y - c.r - 30, this.steps[this.idx].name + ' 찾았다! 🎉', '#fff', Math.max(32, W*0.042));
+      }
+    } else {
+      this.progress = Math.max(0, this.progress - dt * 1.6);
+    }
+  },
+  drawArc(cx, cy, R, from, sweep, color, width, alpha) {
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx, cy, R, from, from + sweep); ctx.stroke();
+    ctx.globalAlpha = 1;
+  },
+  draw() {
+    drawVideo();
+    const m = this.idx < this.steps.length ? this.steps[this.idx] : null;
+    /* 상단 무지개 (완성된 색만 선명하게) */
+    const rcx = W/2, rcy = Math.max(150, H*0.28);
+    const baseR = Math.min(W*0.22, H*0.26);
+    const aw = Math.max(10, baseR*0.11);
+    for (let i=0;i<this.steps.length;i++) {
+      const R = baseR - i*(aw+3);
+      const done = i < this.idx || this.doneAll;
+      this.drawArc(rcx, rcy, R, Math.PI, Math.PI, this.steps[i].css, aw, done ? 0.95 : 0.18);
+    }
+    /* 구름 양끝 */
+    ctx.font = Math.max(30, baseR*0.35) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('☁️', rcx - baseR, rcy + 6);
+    ctx.fillText('☁️', rcx + baseR, rcy + 6);
+    if (this.doneAll) return;
+    /* 미션판 */
+    const bh = Math.max(52, H*0.095);
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    roundRect(W/2 - Math.min(W*0.36,380), 8, Math.min(W*0.72,760), bh, 20); ctx.fill();
+    const fsz = Math.max(19, Math.min(W*0.028, 34));
+    ctx.font = '900 ' + fsz + 'px sans-serif';
+    const seg1 = '🌈 ', seg2 = m.name, seg3 = ' 물건을 찾아와요!';
+    const w1 = ctx.measureText(seg1).width, w2 = ctx.measureText(seg2).width, w3 = ctx.measureText(seg3).width;
+    let tx = W/2 - (w1+w2+w3)/2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff'; ctx.fillText(seg1, tx, 8 + bh/2); tx += w1;
+    ctx.fillStyle = m.css;
+    ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 3;
+    ctx.fillText(seg2, tx, 8 + bh/2); tx += w2;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff'; ctx.fillText(seg3, tx, 8 + bh/2);
+    ctx.textAlign = 'center';
+    /* 타겟 원 + 진행 링 */
+    const c = this.circle();
+    ctx.save();
+    ctx.lineWidth = Math.max(6, c.r*0.09);
+    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.setLineDash([14,12]);
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, 6.29); ctx.stroke();
+    ctx.setLineDash([]);
+    if (this.progress > 0) {
+      ctx.strokeStyle = m.css;
+      ctx.lineWidth = Math.max(9, c.r*0.13); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(c.x, c.y, c.r, -Math.PI/2, -Math.PI/2 + this.progress*6.283); ctx.stroke();
+    }
+    ctx.restore();
+    if (this.celebrating > 0) bigCenterText('🎉 찾았다 !', Math.max(34, W*0.05), '#FFD166', c.y);
+  }
+};
+
+/* ================= 메인 루프 ================= */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last)/1000);
+  last = now;
+  updateMotion();
+  if (mode === 'menu') {
+    /* 메뉴 뒤 배경만 */
+    ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,W,H);
+  } else {
+    if (mode === 'mugung') { mugung.update(dt); mugung.draw(); }
+    else if (mode === 'balloon') { balloon.update(dt); balloon.draw(); }
+    else if (mode === 'color') { colorGame.update(dt); colorGame.draw(); }
+    else if (mode === 'mole') { mole.update(dt); mole.draw(); }
+    else if (mode === 'quiz') { quiz.update(dt); quiz.draw(); }
+    else if (mode === 'bubble') { bubble.update(dt); bubble.draw(); }
+    else if (mode === 'firefly') { firefly.update(dt); firefly.draw(); }
+    else if (mode === 'rainbow') { rainbow.update(dt); rainbow.draw(); }
+    updateFx(dt);
+    drawFx();
+    updateBanner(dt);
+    drawBanner();
+    updateWaveRestart(dt);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
